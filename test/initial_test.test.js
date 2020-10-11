@@ -3,9 +3,9 @@ const { expect } = require("chai");
 const { parseEther } = require("ethers/lib/utils");
 
 const States = {
-  DEPOSIT: 0,
-  EXCHANGING: 1,
-  CLAIM: 2,
+  PREPARE: 0,
+  BAKE: 1,
+  MUNCH: 2,
 };
 
 describe("Oven happy flow", function () {
@@ -29,7 +29,7 @@ describe("Oven happy flow", function () {
   it("Join pool", async function () {
     await expect(await oven.getStake(owner.getAddress())).to.be.eq(0);
     await expect(await oven.getTotalValue()).to.be.eq(0);
-    await expect(await oven.getState()).to.be.eq(States.DEPOSIT);
+    await expect(await oven.getState()).to.be.eq(States.PREPARE);
 
     await oven.deposit({ value: parseEther("1") });
 
@@ -40,8 +40,8 @@ describe("Oven happy flow", function () {
   });
   it("Starts exchanging", async function () {
     await expect(await oven.getFinalTotalValue()).to.be.eq(parseEther("0"));
-    await oven.setStateExchanging();
-    await expect(await oven.getState()).to.be.eq(States.EXCHANGING);
+    await oven.setStateBake();
+    await expect(await oven.getState()).to.be.eq(States.BAKE);
     await expect(await oven.getFinalTotalValue()).to.be.eq(parseEther("1"));
 
     await expect(await oven.getTotalTokensClaimable()).to.be.eq(
@@ -64,11 +64,11 @@ describe("Oven happy flow", function () {
     await expect(await oven.getFinalTotalTokensClaimable()).to.be.eq(
       parseEther("0")
     );
-    await oven.setStateClaim();
+    await oven.setStateMunch();
     await expect(await oven.getFinalTotalTokensClaimable()).to.be.eq(
       parseEther("2")
     );
-    await expect(await oven.getState()).to.be.eq(States.CLAIM);
+    await expect(await oven.getState()).to.be.eq(States.MUNCH);
   });
   it("Claim", async function () {
     balance = await pool.balanceOf(owner.getAddress());
@@ -84,7 +84,8 @@ describe("Oven happy flow", function () {
     );
   });
   it("Start deposit state", async function () {
-    await oven.setStateDeposit();
+    await oven.setStatePrepare();
+    await expect(await oven.getState()).to.be.eq(States.PREPARE);
     await expect(await oven.getTotalTokensClaimable()).to.be.eq("0");
     await expect(await oven.getFinalTotalTokensClaimable()).to.be.eq("0");
     await expect(await oven.getTotalValue()).to.be.eq("0");
