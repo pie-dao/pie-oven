@@ -1,0 +1,21 @@
+{
+  "name": "oven",
+  "version": "1.0.0",
+  "description": "Pool ETH and create pies",
+  "main": "index.js",
+  "scripts": {
+    "test": "test"
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@nomiclabs/buidler": "^1.4.7",
+    "@nomiclabs/buidler-ethers": "^2.0.2",
+    "@nomiclabs/buidler-waffle": "^2.1.0",
+    "ethereum-waffle": "^3.1.1",
+    "ethers": "^5.0.17"
+  },
+  "dependencies": {
+    "chai": "^4.2.0"
+  }
+}
