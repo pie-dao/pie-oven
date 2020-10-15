@@ -31,7 +31,19 @@ describe("Oven happy flow", function () {
     await expect(await oven.getTotalValue()).to.be.eq(0);
     await expect(await oven.getState()).to.be.eq(States.PREPARE);
 
+    await owner.sendTransaction({
+      to: oven.address,
+      value:parseEther("1.0")
+    });
     await oven.deposit({ value: parseEther("1") });
+
+    await expect(await oven.getStake(owner.getAddress())).to.be.eq(
+      parseEther("2")
+    );
+    await expect(await oven.getTotalValue()).to.be.eq(parseEther("2"));
+  });
+  it("Exit pool partially", async function () {
+    await oven.withdraw(parseEther("1"))
 
     await expect(await oven.getStake(owner.getAddress())).to.be.eq(
       parseEther("1")

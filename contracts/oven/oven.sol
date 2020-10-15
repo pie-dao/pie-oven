@@ -92,8 +92,15 @@ contract Oven {
         emit Deposit(msg.sender, msg.value);
     }
 
+    function withdraw(uint256 _amount) public {
+        require(state == States.PREPARE, "WRONG_STATE");
+        stake[msg.sender] = stake[msg.sender].sub(_amount);
+        totalValue = totalValue.sub(_amount);
+        msg.sender.send(_amount);
+    }
+
     receive() external payable {
-        this.deposit();
+        deposit();
     }
 
     function claim(address _staker) external {
