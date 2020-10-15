@@ -25,6 +25,10 @@ describe("Oven happy flow", function () {
     const Oven = await ethers.getContractFactory("Oven");
     oven = await Oven.deploy(owner.getAddress(), pool.address);
     oven.deployed();
+
+    expect(await oven.getMaxCap()).to.be.eq(0);
+    await oven.setMaxCap(parseEther("100"))
+    expect(await oven.getMaxCap()).to.be.eq(parseEther("100"));
   });
   it("Join pool", async function () {
     await expect(await oven.getStake(owner.getAddress())).to.be.eq(0);

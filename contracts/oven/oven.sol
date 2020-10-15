@@ -28,6 +28,7 @@ contract Oven {
 
     address private controller;
     IUniswapExchange private pool;
+    uint256 maxCap;
 
     constructor(address _controller, address _pool) public {
         controller = _controller;
@@ -89,6 +90,7 @@ contract Oven {
         require(state == States.PREPARE, "WRONG_STATE");
         stake[msg.sender] = stake[msg.sender].add(msg.value);
         totalValue = totalValue.add(msg.value);
+        require(totalValue <= maxCap, "MAX_CAP");
         emit Deposit(msg.sender, msg.value);
     }
 
@@ -113,6 +115,15 @@ contract Oven {
         stake[_staker] = 0;
         // TODO do sanity checks on the toClaim amount;
         pool.transfer(_staker, toClaim);
+    }
+
+    function setMaxCap(uint256 _maxCap) external {
+        require(msg.sender == controller, "NOT_CONTROLLER");
+        maxCap = _maxCap;
+    }
+
+    function getMaxCap() external view returns (uint256) {
+        return maxCap;
     }
 
     function getState() external view returns (States) {
