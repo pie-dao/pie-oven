@@ -9,8 +9,9 @@ const States = {
 };
 
 describe("Oven happy flow", function () {
-  let pool;
-  let owner;
+  let pool : any;
+  let owner : any;
+  let oven : any;
 
   before(async function () {
     [owner] = await ethers.getSigners();
@@ -87,7 +88,7 @@ describe("Oven happy flow", function () {
     await expect(await oven.getState()).to.be.eq(States.MUNCH);
   });
   it("Claim", async function () {
-    balance = await pool.balanceOf(owner.getAddress());
+    let balance = await pool.balanceOf(owner.getAddress());
     await expect(balance).to.be.eq("0");
     await oven.claim(owner.getAddress());
     balance = await pool.balanceOf(owner.getAddress());
