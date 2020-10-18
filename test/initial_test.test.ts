@@ -10,31 +10,36 @@ const States = {
 
 describe("Oven happy flow", function () {
   let pool : any;
+  let recipe : any;
   let owner : any;
   let oven : any;
 
   before(async function () {
     [owner] = await ethers.getSigners();
-    const TestUniswapExchange = await ethers.getContractFactory(
-      "TestUniswapExchange"
+    const TestPieRecipe = await ethers.getContractFactory(
+      "TestPieRecipe"
     );
-    pool = await TestUniswapExchange.deploy();
+    recipe = await TestPieRecipe.deploy();
+    await recipe.deployed();
+
+    const TestPie = await ethers.getContractFactory(
+      "TestPie"
+    );
+    pool = await TestPie.deploy(parseEther("10000000000"), recipe.address);
     await pool.deployed();
   });
 
   it("Should deploy oven", async function () {
     const Oven = await ethers.getContractFactory("Oven");
-    oven = await Oven.deploy(owner.getAddress(), pool.address);
+    oven = await Oven.deploy(owner.getAddress(), pool.address, recipe.address);
     oven.deployed();
 
-    expect(await oven.getMaxCap()).to.be.eq(0);
-    await oven.setMaxCap(parseEther("100"))
-    expect(await oven.getMaxCap()).to.be.eq(parseEther("100"));
+    expect(await oven.getCap()).to.be.eq(0);
+    await oven.setCap(parseEther("100"))
+    expect(await oven.getCap()).to.be.eq(parseEther("100"));
   });
-  it("Join pool", async function () {
-    await expect(await oven.getStake(owner.getAddress())).to.be.eq(0);
-    await expect(await oven.getTotalValue()).to.be.eq(0);
-    await expect(await oven.getState()).to.be.eq(States.PREPARE);
+  it("Deposit", async function () {
+    await expect(await oven.ethBalanceOf(owner.getAddress())).to.be.eq(0);
 
     await owner.sendTransaction({
       to: oven.address,
@@ -42,70 +47,29 @@ describe("Oven happy flow", function () {
     });
     await oven.deposit({ value: parseEther("1") });
 
-    await expect(await oven.getStake(owner.getAddress())).to.be.eq(
-      parseEther("2")
-    );
-    await expect(await oven.getTotalValue()).to.be.eq(parseEther("2"));
+    await expect(await oven.ethBalanceOf(owner.getAddress())).to.be.eq(parseEther("2"));
   });
-  it("Exit pool partially", async function () {
-    await oven.withdraw(parseEther("1"))
+  it("Withdraw ETH", async function () {
+    await oven.withdrawETH(parseEther("1"), owner.getAddress())
 
-    await expect(await oven.getStake(owner.getAddress())).to.be.eq(
-      parseEther("1")
-    );
-    await expect(await oven.getTotalValue()).to.be.eq(parseEther("1"));
-  });
+    await expect(await oven.ethBalanceOf(owner.getAddress())).to.be.eq(parseEther("1"));
+
+ });
   it("Starts exchanging", async function () {
-    await expect(await oven.getFinalTotalValue()).to.be.eq(parseEther("0"));
-    await oven.setStateBake();
-    await expect(await oven.getState()).to.be.eq(States.BAKE);
-    await expect(await oven.getFinalTotalValue()).to.be.eq(parseEther("1"));
+    await expect(await oven.ethBalanceOf(owner.getAddress())).to.be.eq(parseEther("1"));
+    await expect(await oven.outputBalanceOf(owner.getAddress())).to.be.eq(parseEther("0"));
 
-    await expect(await oven.getTotalTokensClaimable()).to.be.eq(
-      parseEther("0")
-    );
+    await oven.bake([owner.getAddress()], [parseEther("1")], parseEther("1"), parseEther("2"));
 
-    await oven.execute(parseEther("0.6"), parseEther("1.2"), 0);
+    await expect(await oven.ethBalanceOf(owner.getAddress())).to.be.eq(parseEther("0"));
+    await expect(await oven.outputBalanceOf(owner.getAddress())).to.be.eq(parseEther("1"));
+ });
+  it("Withdraw Output", async function () {
 
-    await expect(await oven.getTotalTokensClaimable()).to.be.eq(
-      parseEther("1.2")
-    );
-    await expect(await oven.getTotalValue()).to.be.eq(parseEther("0.4"));
-  });
-  it("Finish exchanging", async function () {
-    await oven.execute(parseEther("0.4"), parseEther("0.8"), 0);
-    await expect(await oven.getTotalTokensClaimable()).to.be.eq(
-      parseEther("2")
-    );
-    await expect(await oven.getTotalValue()).to.be.eq("0");
-    await expect(await oven.getFinalTotalTokensClaimable()).to.be.eq(
-      parseEther("0")
-    );
-    await oven.setStateMunch();
-    await expect(await oven.getFinalTotalTokensClaimable()).to.be.eq(
-      parseEther("2")
-    );
-    await expect(await oven.getState()).to.be.eq(States.MUNCH);
-  });
-  it("Claim", async function () {
-    let balance = await pool.balanceOf(owner.getAddress());
-    await expect(balance).to.be.eq("0");
-    await oven.claim(owner.getAddress());
-    balance = await pool.balanceOf(owner.getAddress());
-    await expect(balance).to.be.eq(parseEther("2"));
-    await expect(await oven.getTotalTokensClaimable()).to.be.eq(
-      parseEther("0")
-    );
-    await expect(await oven.getFinalTotalTokensClaimable()).to.be.eq(
-      parseEther("2")
-    );
-  });
-  it("Start deposit state", async function () {
-    await oven.setStatePrepare();
-    await expect(await oven.getState()).to.be.eq(States.PREPARE);
-    await expect(await oven.getTotalTokensClaimable()).to.be.eq("0");
-    await expect(await oven.getFinalTotalTokensClaimable()).to.be.eq("0");
-    await expect(await oven.getTotalValue()).to.be.eq("0");
-    await expect(await oven.getFinalTotalValue()).to.be.eq("0");
+    await expect(await oven.outputBalanceOf(owner.getAddress())).to.be.eq(parseEther("1"));
+    await expect(await pool.balanceOf(owner.getAddress())).to.be.eq(parseEther("0"))
+    await oven.withdrawOutput(parseEther("1"), owner.getAddress())
+    await expect(await oven.outputBalanceOf(owner.getAddress())).to.be.eq(parseEther("0"));
+    await expect(await pool.balanceOf(owner.getAddress())).to.be.eq(parseEther("1"))
   });
 });

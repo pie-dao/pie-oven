@@ -2,151 +2,108 @@
 pragma solidity ^0.7.1;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "../interfaces/IUniswapExchange.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "../interfaces/PieRecipe.sol";
 
 contract Oven {
     // Sponsoring can be done transferring tokens to this pool before the start of a round.
     using SafeMath for uint256;
 
-    enum States {PREPARE, BAKE, MUNCH}
-
     event Deposit(address accountAddress, uint256 amount);
-    // account => stake
-    mapping(address => uint256) private stake;
-    // *totalValue variables are set during state = PREPARE
-    // Final total value of a baking session
-    uint256 private finalTotalValue;
-    // Current total value in the pool
-    uint256 private totalValue;
 
-    // *tokensclaimable variables are set during state = BAKE
-    // Final amount of tokens during a baking session
-    uint256 private finalTotalTokensClaimable;
-    // Current amout tokens left to claim in the pool
-    uint256 private totalTokensClaimable;
-    States private state;
+    mapping(address => uint256) public ethBalanceOf;
+    mapping(address => uint256) public outputBalanceOf;
+    address public controller;
+    IERC20 public pie;
+    PieRecipe public recipe;
+    uint256 public cap;
 
-    address private controller;
-    IUniswapExchange private pool;
-    uint256 maxCap;
-
-    constructor(address _controller, address _pool) public {
+    constructor(
+        address _controller,
+        address _pie,
+        address _recipe
+    ) public {
         controller = _controller;
-        pool = IUniswapExchange(_pool);
+        pie = IERC20(_pie);
+        recipe = PieRecipe(_recipe);
     }
 
-    modifier onlyController {
+    function bake(
+        address[] calldata _receivers,
+        uint256[] calldata _amounts,
+        uint256 _outputAmount,
+        uint256 _maxPrice
+    ) public {
         require(msg.sender == controller, "NOT_CONTROLLER");
-        _;
-    }
+        require(_receivers.length == _amounts.length, "UNEQUAL_LENGTH");
 
-    function setStatePrepare() public onlyController {
-        require(state == States.MUNCH, "WRONG_STATE");
-        require(totalTokensClaimable == 0, "STILL_CLAIMABLE_LEFT");
+        uint256 realPrice = recipe.calcToPie(address(pie), _outputAmount);
+        require(realPrice <= _maxPrice, "PRICE_ERROR");
 
-        state = States.PREPARE;
-        finalTotalValue = 0;
-        totalValue = 0;
-        finalTotalTokensClaimable = 0;
-        totalTokensClaimable = 0;
-    }
+        uint256 totalInputAmount = 0;
+        for (uint256 i = 0; i < _receivers.length; i++) {
+            // This logic aims to execute the following logic
+            // E.g. 5 eth is needed to mint the outputAmount
+            // User 1: 2 eth (100% used)
+            // User 2: 2 eth (100% used)
+            // User 3: 2 eth (50% used)
+            // User 4: 2 eth (0% used)
 
-    function setStateBake() public onlyController {
-        require(state == States.PREPARE, "WRONG_STATE");
-        finalTotalValue = totalValue;
-        state = States.BAKE;
-    }
+            uint256 userAmount = _amounts[i];
+            if (totalInputAmount == realPrice) {
+                break;
+            } else if (totalInputAmount.add(userAmount) <= realPrice) {
+                totalInputAmount = totalInputAmount.add(userAmount);
+            } else {
+                totalInputAmount = realPrice;
+                userAmount = realPrice.sub(totalInputAmount);
+            }
 
-    function setStateMunch() public onlyController {
-        require(state == States.BAKE, "WRONG_STATE");
-        require(totalValue == 0, "STILL_ETH_LEFT");
-        finalTotalTokensClaimable = totalTokensClaimable;
-        state = States.MUNCH;
-    }
+            ethBalanceOf[_receivers[i]] = ethBalanceOf[_receivers[i]].sub(
+                userAmount
+            );
 
-    function execute(
-        uint256 _ethToSell,
-        uint256 _tokenToBuy,
-        uint256 _deadline
-    ) public onlyController {
-        require(state == States.BAKE, "WRONG_STATE");
-        require(totalValue > 0, "POOL_EMPTY");
-        require(totalValue >= _ethToSell, "NOT_ENOUGH_ETH");
-        require(_tokenToBuy > 0, "ZERO_VALUE");
-        uint256 ethSold = pool.ethToTokenTransferOutput{value: _ethToSell}(
-            _tokenToBuy,
-            _deadline,
-            msg.sender
-        );
-        totalTokensClaimable = pool.balanceOf(address(this));
-        totalValue = totalValue.sub(ethSold);
+            outputBalanceOf[_receivers[i]] = outputBalanceOf[_receivers[i]].add(
+                _outputAmount.mul(userAmount).div(realPrice)
+            );
+        }
+        // Sanity check, if this occurs the contract is broken.
+        require(totalInputAmount == realPrice, "FATAL_CONTRACT_ERR");
+        // For more sanity checks, verify there is no excess eth send by toPie
+        recipe.toPie{value: realPrice}(address(pie), _outputAmount);
     }
 
     function deposit() public payable {
-        // maybe do minimum amount. as a people can deposit 1 wei of eth to bully.
-        // this requires a claim call for every deposit. Gas costs will be high.
-        // Because the balance needs to be 0 for the pool to continue.
-        // OR create setStatePrepareForce, which will do something cool with the left over tokens.
-        require(state == States.PREPARE, "WRONG_STATE");
-        stake[msg.sender] = stake[msg.sender].add(msg.value);
-        totalValue = totalValue.add(msg.value);
-        require(totalValue <= maxCap, "MAX_CAP");
+        ethBalanceOf[msg.sender] = ethBalanceOf[msg.sender].add(msg.value);
+        require(address(this).balance <= cap, "MAX_CAP");
         emit Deposit(msg.sender, msg.value);
-    }
-
-    function withdraw(uint256 _amount) public {
-        require(state == States.PREPARE, "WRONG_STATE");
-        stake[msg.sender] = stake[msg.sender].sub(_amount);
-        totalValue = totalValue.sub(_amount);
-        msg.sender.send(_amount);
     }
 
     receive() external payable {
         deposit();
     }
 
-    function claim(address _staker) external {
-        require(state == States.MUNCH, "WRONG_STATE");
-        require(stake[_staker] > 0, "NO_BALANCE");
-        uint256 toClaim = stake[_staker].mul(finalTotalTokensClaimable).div(
-            finalTotalValue
-        );
-        totalTokensClaimable = totalTokensClaimable.sub(toClaim);
-        stake[_staker] = 0;
-        // TODO do sanity checks on the toClaim amount;
-        pool.transfer(_staker, toClaim);
+    function withdrawETH(uint256 _amount, address payable _receiver) public {
+        ethBalanceOf[msg.sender] = ethBalanceOf[msg.sender].sub(_amount);
+        _receiver.transfer(_amount);
     }
 
-    function setMaxCap(uint256 _maxCap) external {
+    function withdrawOutput(uint256 _amount, address _receiver) external {
+        outputBalanceOf[msg.sender] = outputBalanceOf[msg.sender].sub(_amount);
+        pie.transfer(_receiver, _amount);
+    }
+
+    function setCap(uint256 _cap) external {
         require(msg.sender == controller, "NOT_CONTROLLER");
-        maxCap = _maxCap;
+        cap = _cap;
     }
 
-    function getMaxCap() external view returns (uint256) {
-        return maxCap;
+    function setController(address _controller) external {
+        require(msg.sender == controller, "NOT_CONTROLLER");
+        controller = _controller;
     }
 
-    function getState() external view returns (States) {
-        return state;
-    }
-
-    function getStake(address _address) external view returns (uint256) {
-        return stake[_address];
-    }
-
-    function getTotalValue() external view returns (uint256) {
-        return totalValue;
-    }
-
-    function getFinalTotalValue() external view returns (uint256) {
-        return finalTotalValue;
-    }
-
-    function getTotalTokensClaimable() external view returns (uint256) {
-        return totalTokensClaimable;
-    }
-
-    function getFinalTotalTokensClaimable() external view returns (uint256) {
-        return finalTotalTokensClaimable;
+    function getCap() external view returns (uint256) {
+        return cap;
     }
 }
