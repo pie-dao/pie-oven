@@ -10,16 +10,23 @@ contract TestPieRecipe {
     using SafeMath for uint256;
     mapping(address => uint256) private balance;
 
+    uint256 public calcToPieAmount;
+
     function toPie(address _pie, uint256 _poolAmount) public payable {
         IERC20 pie = IERC20(_pie);
-        pie.transfer(msg.sender, _poolAmount);
+        uint256 amount = calcToPie(_pie, _poolAmount);
+        pie.transfer(msg.sender, amount);
+    }
+
+    function testSetCalcToPieAmount(uint256 _amount) external {
+        calcToPieAmount = _amount;
     }
 
     function calcToPie(address _pie, uint256 _poolAmount)
-        external
+        public
         view
         returns (uint256)
     {
-        return _poolAmount;
+        return calcToPieAmount;
     }
 }

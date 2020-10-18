@@ -6,10 +6,12 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/PieRecipe.sol";
 
 contract Oven {
-    // Sponsoring can be done transferring tokens to this pool before the start of a round.
     using SafeMath for uint256;
 
-    event Deposit(address accountAddress, uint256 amount);
+    event Deposit(address user, uint256 amount);
+    event WithdrawETH(address user, uint256 amount, address receiver);
+    event WithdrawOuput(address user, uint256 amount, address receiver);
+    event Bake(address user, uint256 amount, uint256 price);
 
     mapping(address => uint256) public ethBalanceOf;
     mapping(address => uint256) public outputBalanceOf;
@@ -55,21 +57,26 @@ contract Oven {
             } else if (totalInputAmount.add(userAmount) <= realPrice) {
                 totalInputAmount = totalInputAmount.add(userAmount);
             } else {
-                totalInputAmount = realPrice;
                 userAmount = realPrice.sub(totalInputAmount);
+                // e.g. totalInputAmount = realPrice
+                totalInputAmount = totalInputAmount.add(userAmount);
             }
 
             ethBalanceOf[_receivers[i]] = ethBalanceOf[_receivers[i]].sub(
                 userAmount
             );
 
-            outputBalanceOf[_receivers[i]] = outputBalanceOf[_receivers[i]].add(
-                _outputAmount.mul(userAmount).div(realPrice)
+            uint256 userBakeAmount = _outputAmount.mul(userAmount).div(
+                realPrice
             );
+            outputBalanceOf[_receivers[i]] = outputBalanceOf[_receivers[i]].add(
+                userBakeAmount
+            );
+
+            emit Bake(_receivers[i], userBakeAmount, userAmount);
         }
-        // Sanity check, if this occurs the contract is broken.
-        require(totalInputAmount == realPrice, "FATAL_CONTRACT_ERR");
-        // For more sanity checks, verify there is no excess eth send by toPie
+        // Provided balances are too low.
+        require(totalInputAmount == realPrice, "INSUFFICIENT_FUNDS");
         recipe.toPie{value: realPrice}(address(pie), _outputAmount);
     }
 
@@ -86,11 +93,13 @@ contract Oven {
     function withdrawETH(uint256 _amount, address payable _receiver) public {
         ethBalanceOf[msg.sender] = ethBalanceOf[msg.sender].sub(_amount);
         _receiver.transfer(_amount);
+        emit WithdrawETH(msg.sender, _amount, _receiver);
     }
 
     function withdrawOutput(uint256 _amount, address _receiver) external {
         outputBalanceOf[msg.sender] = outputBalanceOf[msg.sender].sub(_amount);
         pie.transfer(_receiver, _amount);
+        emit WithdrawOuput(msg.sender, _amount, _receiver);
     }
 
     function setCap(uint256 _cap) external {
