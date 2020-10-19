@@ -4,7 +4,10 @@
   "description": "Pool ETH and create pies",
   "main": "index.js",
   "scripts": {
-    "test": "test"
+    "test": "npx buidler test",
+    "compile": "npx buidler compile",
+    "clean": "rm -rf ./artifacts && rm -rf ./cache",
+    "remix": "remixd -s . --remix-ide https://remix.ethereum.org"
   },
   "author": "",
   "license": "MIT",
