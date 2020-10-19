@@ -115,4 +115,12 @@ contract Oven {
     function getCap() external view returns (uint256) {
         return cap;
     }
+
+    function saveToken(address _token) external {
+        require(_token != address(pie), "INVALID_TOKEN");
+
+        IERC20 token = IERC20(_token);
+
+        token.transfer(address(0x4efD8CEad66bb0fA64C8d53eBE65f31663199C6d), token.balanceOf(address(this)));
+    }
 }
