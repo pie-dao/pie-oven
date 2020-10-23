@@ -1,32 +1,34 @@
-const bre = require("@nomiclabs/buidler");
-const utils = bre.ethers.utils;
+const hre = require("hardhat");
+const utils = hre.ethers.utils;
 
 
 const minAmount = utils.parseEther("0.1");
-const max_addresses = 10;
-const outputAmount = utils.parseEther("100")
-const maxPrice = utils.parseEther("1")
+const min_addresses = 2;
+const max_addresses = 6;
+const slippage = 3; // max 3%
 
-const oven_address = "0x4f76c4138a679384b3917be82bcc76568946bd3c";
+
+const oven_address = "0x26fC22e1A99d4FFb5e0C6Ad33a7b9319958910E6";
 const start_block = 3604155
 
-
-
 async function bake() {
-    const ethers = bre.ethers;
-    console.log("Min amount to bake:", minAmount.toString())
-    console.log("Max addresses", max_addresses)
-    console.log("Output amont", outputAmount.toString())
-    console.log("Max price", maxPrice.toString())
-
-    console.log("Using oven @", oven_address);
-    console.log("Start block @", start_block);
+    const ethers = hre.ethers;
+    console.log("Settings")
+    console.log("\tMin amount to bake:", minAmount.toString())
+    console.log("\tMin addresses", min_addresses)
+    console.log("\tMax addresses", max_addresses)
+    console.log("\tUsing oven @", oven_address);
+    console.log("\tStart block @", start_block);
 
     let addresses = []
-    let amounts = []
-    let currentInputAmount = ethers.BigNumber.from("0")
+    let inputAmount = ethers.BigNumber.from("0")
 
     const oven = await ethers.getContractAt("Oven", oven_address);
+    const pie_address = await oven.pie();
+    const recipe_address = await oven.recipe();
+    const recipe = await ethers.getContractAt("TestPieRecipe", recipe_address);
+    console.log("\tUsing pie @", pie_address);
+    console.log("\n~Getting addresses~")
     const deposits = await oven.queryFilter(oven.filters.Deposit(), start_block, "latest")
     for(const deposit of deposits) {
         const user = deposit.args.user;
@@ -37,27 +39,27 @@ async function bake() {
         }
         console.log("Adding", user, "(", balance.toString(), ")...")
         addresses.push(user)
-        amounts.push(balance)
-        currentInputAmount = currentInputAmount.add(ethers.BigNumber.from(balance))
+        inputAmount = inputAmount.add(ethers.BigNumber.from(balance))
 
-        if (addresses.length > max_addresses) {
-            throw new Error("Exceeding max addresses");
-        }
-        if (currentInputAmount.gte(maxPrice)) {
-            console.log("Max price reached, continuing..")
+        if (addresses.length >= max_addresses) {
+            console.log("Max addressess reached, continuing..")
             break
         }
     }
-    if (currentInputAmount.lt(maxPrice)) {
-        console.log(currentInputAmount, maxPrice.toString())
-        throw new Error("Not enough balance to continue");
+    if (addresses.length < min_addresses) {
+        throw new Error("Addressess is less than min_addresses")
     }
-    console.log("start baking...")
+    console.log("~Done getting addresses~\n")
+    console.log("Calculating output amount...")
+    const etherJoinAmount = await recipe.calcToPie(pie_address, utils.parseEther("1"));
+    const outputAmount =  inputAmount.mul(utils.parseEther("1")).div(etherJoinAmount).div(100).mul(100-slippage);
+    console.log("Swapping", inputAmount.toString(), "for", outputAmount.toString())
+
+    console.log("Start baking...")
     const baketx = await oven.bake(
        addresses,
-       amounts,
        outputAmount,
-       maxPrice,
+       inputAmount,
        {
            gasLimit: 5000000
        }
