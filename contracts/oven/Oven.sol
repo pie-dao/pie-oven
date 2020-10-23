@@ -30,14 +30,15 @@ contract Oven {
         recipe = PieRecipe(_recipe);
     }
 
+    // _maxprice should be equal to the sum of _receivers.
+    // this variable is needed because in the time between calling this function
+    // and execution, the _receiver amounts can differ.
     function bake(
         address[] calldata _receivers,
-        uint256[] calldata _amounts,
         uint256 _outputAmount,
         uint256 _maxPrice
     ) public {
         require(msg.sender == controller, "NOT_CONTROLLER");
-        require(_receivers.length == _amounts.length, "UNEQUAL_LENGTH");
 
         uint256 realPrice = recipe.calcToPie(address(pie), _outputAmount);
         require(realPrice <= _maxPrice, "PRICE_ERROR");
@@ -51,7 +52,7 @@ contract Oven {
             // User 3: 2 eth (50% used)
             // User 4: 2 eth (0% used)
 
-            uint256 userAmount = _amounts[i];
+            uint256 userAmount = ethBalanceOf[_receivers[i]];
             if (totalInputAmount == realPrice) {
                 break;
             } else if (totalInputAmount.add(userAmount) <= realPrice) {
@@ -90,14 +91,24 @@ contract Oven {
         deposit();
     }
 
+    function withdrawAll(address payable _receiver) external {
+        withdrawAllETH(_receiver);
+        withdrawOutput(_receiver);
+    }
+
+    function withdrawAllETH(address payable _receiver) public {
+        withdrawETH(ethBalanceOf[msg.sender], _receiver);
+    }
+
     function withdrawETH(uint256 _amount, address payable _receiver) public {
         ethBalanceOf[msg.sender] = ethBalanceOf[msg.sender].sub(_amount);
         _receiver.transfer(_amount);
         emit WithdrawETH(msg.sender, _amount, _receiver);
     }
 
-    function withdrawOutput(uint256 _amount, address _receiver) external {
-        outputBalanceOf[msg.sender] = outputBalanceOf[msg.sender].sub(_amount);
+    function withdrawOutput(address _receiver) public {
+        uint256 _amount = outputBalanceOf[msg.sender];
+        outputBalanceOf[msg.sender] = 0;
         pie.transfer(_receiver, _amount);
         emit WithdrawOuput(msg.sender, _amount, _receiver);
     }

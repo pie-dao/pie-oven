@@ -15,7 +15,8 @@ contract TestPieRecipe {
     function toPie(address _pie, uint256 _poolAmount) public payable {
         IERC20 pie = IERC20(_pie);
         uint256 amount = calcToPie(_pie, _poolAmount);
-        pie.transfer(msg.sender, amount);
+        require(msg.value == amount, "Amount ETH too low");
+        pie.transfer(msg.sender, _poolAmount);
     }
 
     function testSetCalcToPieAmount(uint256 _amount) external {

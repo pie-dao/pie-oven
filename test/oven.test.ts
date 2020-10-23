@@ -54,7 +54,7 @@ describe("Oven happy flow", function () {
     await expect(await oven.ethBalanceOf(owner.getAddress())).to.be.eq(parseEther("1"));
     await expect(await oven.outputBalanceOf(owner.getAddress())).to.be.eq(parseEther("0"));
 
-    await oven.bake([owner.getAddress()], [parseEther("1")], parseEther("1"), parseEther("2"));
+    await oven.bake([owner.getAddress()], parseEther("1"), parseEther("2"));
 
     await expect(await oven.ethBalanceOf(owner.getAddress())).to.be.eq(parseEther("0"));
     await expect(await oven.outputBalanceOf(owner.getAddress())).to.be.eq(parseEther("1"));
@@ -63,12 +63,11 @@ describe("Oven happy flow", function () {
 
     await expect(await oven.outputBalanceOf(owner.getAddress())).to.be.eq(parseEther("1"));
     await expect(await pool.balanceOf(owner.getAddress())).to.be.eq(parseEther("0"))
-    await oven.withdrawOutput(parseEther("1"), owner.getAddress())
+    await oven.withdrawOutput(owner.getAddress())
     await expect(await oven.outputBalanceOf(owner.getAddress())).to.be.eq(parseEther("0"));
     await expect(await pool.balanceOf(owner.getAddress())).to.be.eq(parseEther("1"))
   });
 });
-
 
 describe("Test baking", function () {
   let pool : any;
@@ -105,49 +104,30 @@ describe("Test baking", function () {
 
   it("Non controller", async function () {
       await expect (
-        oven.connect(user1).bake([owner.getAddress()], [parseEther("1")], parseEther("1"), parseEther("2"))
+        oven.connect(user1).bake([owner.getAddress()], parseEther("1"), parseEther("2"))
       ).to.be.revertedWith("NOT_CONTROLLER")
-  })
-  it("Unequal length", async function () {
-    await expect (
-      oven.bake([owner.getAddress()], [parseEther("1"), parseEther("1")], parseEther("1"), parseEther("2"))
-    ).to.be.revertedWith("UNEQUAL_LENGTH")
   })
   it("Price too much", async function () {
     await recipe.testSetCalcToPieAmount(parseEther("50"))
     await expect (
-      oven.bake([owner.getAddress()], [parseEther("1")], parseEther("1"), parseEther("25"))
+      oven.bake([owner.getAddress()], parseEther("1"), parseEther("25"))
     ).to.be.revertedWith("PRICE_ERROR")
-  })
-  it("User1 insufficient funds", async function () {
-    // price needed
-    await recipe.testSetCalcToPieAmount(parseEther("150"))
-
-    await expect (
-      oven.bake(
-        [user1.getAddress(), user2.getAddress(), user3.getAddress()],
-        [parseEther("110"), parseEther("20"), parseEther("20")],
-        parseEther("10"),
-        parseEther("200")
-      )
-    ).to.be.revertedWith("subtraction overflow")
   })
   it("Total insufficient funds", async function () {
     // price needed
-    await recipe.testSetCalcToPieAmount(parseEther("65"))
+    await recipe.testSetCalcToPieAmount(parseEther("310"))
 
     await expect (
       oven.bake(
         [user1.getAddress(), user2.getAddress(), user3.getAddress()],
-        [parseEther("20"), parseEther("20"), parseEther("20")],
         parseEther("10"),
-        parseEther("100")
+        parseEther("350")
       )
     ).to.be.revertedWith("INSUFFICIENT_FUNDS")
   })
   it("Success (exact)", async function () {
     // price needed
-    await recipe.testSetCalcToPieAmount(parseEther("60"))
+    await recipe.testSetCalcToPieAmount(parseEther("300"))
     const users = [user1, user2, user3];
     for(const user of users) {
       await expect(await oven.ethBalanceOf(user.getAddress())).to.be.eq(parseEther("100"));
@@ -156,20 +136,19 @@ describe("Test baking", function () {
 
     await oven.bake(
       [user1.getAddress(), user2.getAddress(), user3.getAddress()],
-      [parseEther("20"), parseEther("20"), parseEther("20")],
       parseEther("30"),
-      parseEther("100")
+      parseEther("300")
     )
 
     for(const user of users) {
-      await expect(await oven.ethBalanceOf(user.getAddress())).to.be.eq(parseEther("80"));
+      await expect(await oven.ethBalanceOf(user.getAddress())).to.be.eq(parseEther("0"));
       await expect(await oven.outputBalanceOf(user.getAddress())).to.be.eq(parseEther("10"));
     };
 
   })
   it("Success (too much)", async function () {
     // price needed
-    await recipe.testSetCalcToPieAmount(parseEther("30"))
+    await recipe.testSetCalcToPieAmount(parseEther("250"))
     const users = [user1, user2, user3];
     for(const user of users) {
       await expect(await oven.ethBalanceOf(user.getAddress())).to.be.eq(parseEther("100"));
@@ -178,19 +157,18 @@ describe("Test baking", function () {
 
     await oven.bake(
       [user1.getAddress(), user2.getAddress(), user3.getAddress()],
-      [parseEther("20"), parseEther("20"), parseEther("20")],
       parseEther("30"),
-      parseEther("100")
+      parseEther("300")
     )
 
-    await expect(await oven.ethBalanceOf(user1.getAddress())).to.be.eq(parseEther("80"));
-    await expect(await oven.outputBalanceOf(user1.getAddress())).to.be.eq(parseEther("20"));
+    await expect(await oven.ethBalanceOf(user1.getAddress())).to.be.eq(parseEther("0"));
+    await expect(await oven.outputBalanceOf(user1.getAddress())).to.be.eq(parseEther("12"));
 
-    await expect(await oven.ethBalanceOf(user2.getAddress())).to.be.eq(parseEther("90"));
-    await expect(await oven.outputBalanceOf(user2.getAddress())).to.be.eq(parseEther("10"));
+    await expect(await oven.ethBalanceOf(user2.getAddress())).to.be.eq(parseEther("0"));
+    await expect(await oven.outputBalanceOf(user2.getAddress())).to.be.eq(parseEther("12"));
 
-    await expect(await oven.ethBalanceOf(user3.getAddress())).to.be.eq(parseEther("100"));
-    await expect(await oven.outputBalanceOf(user3.getAddress())).to.be.eq(parseEther("0"));
+    await expect(await oven.ethBalanceOf(user3.getAddress())).to.be.eq(parseEther("50"));
+    await expect(await oven.outputBalanceOf(user3.getAddress())).to.be.eq(parseEther("6"));
   })
 
 })
@@ -309,7 +287,6 @@ describe("Test withdraw output", function () {
     await recipe.testSetCalcToPieAmount(parseEther("90"))
     await oven.bake(
       [user1.getAddress()],
-      [parseEther("90")],
       parseEther("100"),
       parseEther("100")
     )
@@ -321,37 +298,28 @@ describe("Test withdraw output", function () {
     await expect(await oven.outputBalanceOf(user1.getAddress())).to.be.eq(parseEther("100"));
     await expect(await pool.balanceOf(user1.getAddress())).to.be.eq(parseEther("0"));
 
-    await oven.connect(user1).withdrawOutput(parseEther("10"), user1.getAddress())
+    await oven.connect(user1).withdrawOutput(user1.getAddress())
 
     await expect(await oven.ethBalanceOf(user1.getAddress())).to.be.eq(parseEther("10"));
-    await expect(await oven.outputBalanceOf(user1.getAddress())).to.be.eq(parseEther("90"));
-    await expect(await pool.balanceOf(user1.getAddress())).to.be.eq(parseEther("10"));
-  })
-  it("Withdraw too much", async function () {
-    await expect(await oven.ethBalanceOf(user1.getAddress())).to.be.eq(parseEther("10"));
-    await expect(await oven.outputBalanceOf(user1.getAddress())).to.be.eq(parseEther("100"));
-    await expect(await pool.balanceOf(user1.getAddress())).to.be.eq(parseEther("0"));
-
-    await expect(
-      oven.connect(user1).withdrawOutput(parseEther("120"), user1.getAddress())
-    ).to.be.revertedWith("subtraction overflow");
+    await expect(await oven.outputBalanceOf(user1.getAddress())).to.be.eq(parseEther("0"));
+    await expect(await pool.balanceOf(user1.getAddress())).to.be.eq(parseEther("100"));
   })
   it("Withdraw couple times", async function () {
     await expect(await oven.ethBalanceOf(user1.getAddress())).to.be.eq(parseEther("10"));
     await expect(await oven.outputBalanceOf(user1.getAddress())).to.be.eq(parseEther("100"));
     await expect(await pool.balanceOf(user1.getAddress())).to.be.eq(parseEther("0"));
 
-    await oven.connect(user1).withdrawOutput(parseEther("10"), user1.getAddress())
+    await oven.connect(user1).withdrawOutput(user1.getAddress())
 
     await expect(await oven.ethBalanceOf(user1.getAddress())).to.be.eq(parseEther("10"));
-    await expect(await oven.outputBalanceOf(user1.getAddress())).to.be.eq(parseEther("90"));
-    await expect(await pool.balanceOf(user1.getAddress())).to.be.eq(parseEther("10"));
+    await expect(await oven.outputBalanceOf(user1.getAddress())).to.be.eq(parseEther("0"));
+    await expect(await pool.balanceOf(user1.getAddress())).to.be.eq(parseEther("100"));
 
-    await oven.connect(user1).withdrawOutput(parseEther("10"), user1.getAddress())
+    await oven.connect(user1).withdrawOutput(user1.getAddress())
 
     await expect(await oven.ethBalanceOf(user1.getAddress())).to.be.eq(parseEther("10"));
-    await expect(await oven.outputBalanceOf(user1.getAddress())).to.be.eq(parseEther("80"));
-    await expect(await pool.balanceOf(user1.getAddress())).to.be.eq(parseEther("20"));
+    await expect(await oven.outputBalanceOf(user1.getAddress())).to.be.eq(parseEther("0"));
+    await expect(await pool.balanceOf(user1.getAddress())).to.be.eq(parseEther("100"));
 
   })
   it("Withdraw to other ussr", async function () {
@@ -363,15 +331,15 @@ describe("Test withdraw output", function () {
     await expect(await oven.outputBalanceOf(user2.getAddress())).to.be.eq(parseEther("0"));
     await expect(await pool.balanceOf(user2.getAddress())).to.be.eq(parseEther("0"));
 
-    await oven.connect(user1).withdrawOutput(parseEther("10"), user2.getAddress())
+    await oven.connect(user1).withdrawOutput(user2.getAddress())
 
     await expect(await oven.ethBalanceOf(user1.getAddress())).to.be.eq(parseEther("10"));
-    await expect(await oven.outputBalanceOf(user1.getAddress())).to.be.eq(parseEther("90"));
+    await expect(await oven.outputBalanceOf(user1.getAddress())).to.be.eq(parseEther("0"));
     await expect(await pool.balanceOf(user1.getAddress())).to.be.eq(parseEther("0"));
 
     await expect(await oven.ethBalanceOf(user2.getAddress())).to.be.eq(parseEther("0"));
     await expect(await oven.outputBalanceOf(user2.getAddress())).to.be.eq(parseEther("0"));
-    await expect(await pool.balanceOf(user2.getAddress())).to.be.eq(parseEther("10"));
+    await expect(await pool.balanceOf(user2.getAddress())).to.be.eq(parseEther("100"));
 
 
   })
@@ -406,7 +374,7 @@ describe("Test controller functions", function () {
   });
   it("Bake restriction", async function () {
     await expect (
-      oven.connect(user1).bake([owner.getAddress()], [parseEther("1")], parseEther("1"), parseEther("2"))
+      oven.connect(user1).bake([owner.getAddress()], parseEther("1"), parseEther("2"))
     ).to.be.revertedWith("NOT_CONTROLLER")
   })
   it("Cap restriction", async function () {
