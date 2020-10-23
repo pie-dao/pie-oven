@@ -1,6 +1,7 @@
-import { task, usePlugin } from "@nomiclabs/buidler/config";
-usePlugin("@nomiclabs/buidler-waffle");
-usePlugin("@nomiclabs/buidler-etherscan");
+import { task } from "hardhat/config";
+import "@nomiclabs/hardhat-etherscan";
+import "@nomiclabs/hardhat-ethers";
+import "@nomiclabs/hardhat-waffle";
 
 require('dotenv').config()
 const INFURA_API_KEY = process.env.INFURA_API_KEY || "";
@@ -32,7 +33,7 @@ task("env", "Prints env keys")
 // Go to https://buidler.dev/config/ to learn more
 export default {
   // This is a sample solc configuration that specifies which version of solc to use
-  solc: {
+  solidity: {
     version: "0.7.1",
   },
   networks: {
