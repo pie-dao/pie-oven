@@ -30,6 +30,11 @@ contract Oven {
         recipe = PieRecipe(_recipe);
     }
 
+    modifier ovenUsesPie {
+        require(address(pie) != address(0), "PIE_NOT_SET");
+        _;
+    }
+
     // _maxprice should be equal to the sum of _receivers.
     // this variable is needed because in the time between calling this function
     // and execution, the _receiver amounts can differ.
@@ -37,7 +42,7 @@ contract Oven {
         address[] calldata _receivers,
         uint256 _outputAmount,
         uint256 _maxPrice
-    ) public {
+    ) public ovenUsesPie {
         require(msg.sender == controller, "NOT_CONTROLLER");
 
         uint256 realPrice = recipe.calcToPie(address(pie), _outputAmount);
@@ -81,7 +86,7 @@ contract Oven {
         recipe.toPie{value: realPrice}(address(pie), _outputAmount);
     }
 
-    function deposit() public payable {
+    function deposit() public payable ovenUsesPie {
         ethBalanceOf[msg.sender] = ethBalanceOf[msg.sender].add(msg.value);
         require(address(this).balance <= cap, "MAX_CAP");
         emit Deposit(msg.sender, msg.value);
@@ -91,22 +96,25 @@ contract Oven {
         deposit();
     }
 
-    function withdrawAll(address payable _receiver) external {
+    function withdrawAll(address payable _receiver) external ovenUsesPie {
         withdrawAllETH(_receiver);
         withdrawOutput(_receiver);
     }
 
-    function withdrawAllETH(address payable _receiver) public {
+    function withdrawAllETH(address payable _receiver) public ovenUsesPie {
         withdrawETH(ethBalanceOf[msg.sender], _receiver);
     }
 
-    function withdrawETH(uint256 _amount, address payable _receiver) public {
+    function withdrawETH(uint256 _amount, address payable _receiver)
+        public
+        ovenUsesPie
+    {
         ethBalanceOf[msg.sender] = ethBalanceOf[msg.sender].sub(_amount);
         _receiver.transfer(_amount);
         emit WithdrawETH(msg.sender, _amount, _receiver);
     }
 
-    function withdrawOutput(address _receiver) public {
+    function withdrawOutput(address _receiver) public ovenUsesPie {
         uint256 _amount = outputBalanceOf[msg.sender];
         outputBalanceOf[msg.sender] = 0;
         pie.transfer(_receiver, _amount);
@@ -121,6 +129,13 @@ contract Oven {
     function setController(address _controller) external {
         require(msg.sender == controller, "NOT_CONTROLLER");
         controller = _controller;
+    }
+
+    function setPie(address _pie) external {
+        // Only able to change pie from address(0) to an actual address
+        // Otherwise old outputBalances can conflict with a new pie
+        require(address(pie) == address(0), "PIE_ALREADY_SET");
+        pie = IERC20(_pie);
     }
 
     function getCap() external view returns (uint256) {

@@ -69,6 +69,104 @@ describe("Oven happy flow", function () {
   });
 });
 
+describe("Test Deployment flow", function () {
+  let pool : any;
+  let recipe : any;
+  let owner : any;
+  let user1 : any;
+  let user2 : any;
+  let user3 : any;
+  let oven : any;
+  const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
+
+  it("Regular deployment", async function () {
+    [owner, user1, user2, user3] = await ethers.getSigners();
+    const TestPieRecipe = await ethers.getContractFactory(
+      "TestPieRecipe"
+    );
+    recipe = await TestPieRecipe.deploy();
+    await recipe.deployed();
+
+    const TestPie = await ethers.getContractFactory(
+      "TestPie"
+    );
+    pool = await TestPie.deploy(parseEther("10000000000"), recipe.address);
+    await pool.deployed();
+
+    const Oven = await ethers.getContractFactory("Oven");
+    oven = await Oven.deploy(owner.getAddress(), pool.address, recipe.address);
+    await oven.deployed();
+    await oven.setCap(parseEther("1000"));
+
+    await expect(await oven.pie()).to.be.eq(pool.address)
+    await oven.bake([], 1, 1)
+    await owner.sendTransaction({
+      to: oven.address,
+      value:parseEther("1.0")
+    });
+    await oven.deposit({ value: parseEther("1") });
+    await oven.withdrawAll(owner.getAddress())
+    await oven.withdrawAllETH(owner.getAddress())
+    await oven.withdrawETH(parseEther("0"), owner.getAddress())
+    await oven.withdrawOutput(owner.getAddress())
+  })
+  it("Set pie failing", async function () {
+    await expect(oven.setPie(pool.address)).to.be.revertedWith("PIE_ALREADY_SET")
+  })
+  describe("No initial pool deployment", function () {
+    it("Deploy pool with zero address", async function () {
+      [owner, user1, user2, user3] = await ethers.getSigners();
+      const TestPieRecipe = await ethers.getContractFactory(
+        "TestPieRecipe"
+      );
+      recipe = await TestPieRecipe.deploy();
+      await recipe.deployed();
+
+      const Oven = await ethers.getContractFactory("Oven");
+      oven = await Oven.deploy(owner.getAddress(), ZERO_ADDRESS, recipe.address);
+      await oven.deployed();
+      await oven.setCap(parseEther("1000"));
+
+      await expect(await oven.pie()).to.be.eq(ZERO_ADDRESS)
+      await expect(oven.bake([], 1, 1)).to.be.revertedWith("PIE_NOT_SET")
+      await expect(owner.sendTransaction({
+        to: oven.address,
+        value:parseEther("1.0")
+      })).to.be.revertedWith("PIE_NOT_SET")
+      await expect(oven.deposit({ value: parseEther("1") })).to.be.revertedWith("PIE_NOT_SET")
+      await expect(oven.withdrawAll(owner.getAddress())).to.be.revertedWith("PIE_NOT_SET")
+      await expect(oven.withdrawAllETH(owner.getAddress())).to.be.revertedWith("PIE_NOT_SET")
+      await expect(oven.withdrawETH(parseEther("0"), owner.getAddress())).to.be.revertedWith("PIE_NOT_SET")
+      await expect(oven.withdrawOutput(owner.getAddress())).to.be.revertedWith("PIE_NOT_SET")
+    })
+    it("Set pie", async function () {
+      const TestPie = await ethers.getContractFactory(
+      "TestPie"
+      );
+      pool = await TestPie.deploy(parseEther("10000000000"), recipe.address);
+      await pool.deployed();
+      await oven.setPie(pool.address);
+      await expect(await oven.pie()).to.be.eq(pool.address)
+      await oven.bake([], 1, 1)
+      await owner.sendTransaction({
+        to: oven.address,
+        value:parseEther("1.0")
+      });
+      await oven.deposit({ value: parseEther("1") });
+      await oven.withdrawAll(owner.getAddress())
+      await oven.withdrawAllETH(owner.getAddress())
+      await oven.withdrawETH(parseEther("0"), owner.getAddress())
+      await oven.withdrawOutput(owner.getAddress())
+    })
+    it("Set pie failing", async function () {
+      await expect(oven.setPie(pool.address)).to.be.revertedWith("PIE_ALREADY_SET")
+    })
+  })
+
+
+
+})
+
 describe("Test baking", function () {
   let pool : any;
   let recipe : any;
