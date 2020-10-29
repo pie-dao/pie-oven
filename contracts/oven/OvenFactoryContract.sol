@@ -15,31 +15,25 @@ contract OvenFactoryContract is Ownable {
     address[] public ovens;
     mapping(address => bool) public isOven;
     address public defaultController;
-    address public recipe;
 
     function setDefaultController(address _controller) external onlyOwner {
         defaultController = _controller;
     }
 
-    function setRecipeContract(address _recipe) external onlyOwner {
-        recipe = _recipe;
-    }
-
     function CreateEmptyOven() external {
-        CreateOven(address(0));
+        CreateOven(address(0), address(0));
     }
 
     // TODO, everyone can create an oven?
-    function CreateOven(address _pie) public {
+    function CreateOven(address _pie, address _recipe) public {
         require(defaultController != address(0), "CONTROLLER_NOT_SET");
-        require(recipe != address(0), "RECIPE_NOT_SET");
 
-        Oven oven = new Oven(address(this), _pie, recipe);
+        Oven oven = new Oven(address(this), _pie, _recipe);
         ovens.push(address(oven));
         isOven[address(oven)] = true;
 
         oven.setCap(uint256(-1));
         oven.setController(defaultController);
-        emit OvenCreated(address(oven), defaultController, _pie, recipe);
+        emit OvenCreated(address(oven), defaultController, _pie, _recipe);
     }
 }
