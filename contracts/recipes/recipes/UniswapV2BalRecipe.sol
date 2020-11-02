@@ -9,7 +9,7 @@ contract UniswapV2BalRecipe is UniswapV2Recipe {
         tokenToBPool[_token] = _bPool;
     }
 
-    function _swapToToken(address _token, uint256 _amount, address _pie) internal override {
+    function _swapToToken(address _token, uint256 _amount, address _pie) internal virtual override {
 
         if(tokenToBPool[_token] != address(0)) {
             IBPool bPool = IBPool(tokenToBPool[_token]);
@@ -21,10 +21,10 @@ contract UniswapV2BalRecipe is UniswapV2Recipe {
         } else { // no bPool swap regularly
             super._swapToToken(_token, _amount, _pie);
         }
-        
+
     }
 
-    function calcEthAmount(address _token, uint256 _buyAmount) internal override returns(uint256) {
+    function calcEthAmount(address _token, uint256 _buyAmount) internal virtual override returns(uint256) {
         if(tokenToBPool[_token] != address(0)) {
             IBPool bPool = IBPool(tokenToBPool[_token]);
 

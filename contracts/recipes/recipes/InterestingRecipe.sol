@@ -1,8 +1,6 @@
 pragma solidity 0.6.4;
 
-import "../Ownable.sol";
-import "./UniswapV2Recipe.sol";
-import "../interfaces/IBPool.sol";
+import "./UniswapV2BalRecipe.sol";
 
 import "../interfaces/IAaveLendingPool.sol";
 import "../interfaces/ICompoundCToken.sol";
@@ -10,7 +8,7 @@ import "../interfaces/IERC20.sol";
 
 import "./SafeMath.sol";
 
-contract InterestingRecipe is Ownable, UniswapV2Recipe {
+contract InterestingRecipe is UniswapV2BalRecipe {
     using SafeMath for uint;
     // IDEA: current token supports are hard coded.
     // Use calldata to create a more generalized protocol
@@ -27,9 +25,6 @@ contract InterestingRecipe is Ownable, UniswapV2Recipe {
     // map Aave lendingpool to aave.protocol
     // map Compound comptroller to compound.protocol
     mapping(address => bytes32) public protocolIdentifier;
-
-    mapping(address => address) public underlyingToBPool;
-
 
     function updateProtocolIdentifier(
         address _protocol,
@@ -52,27 +47,14 @@ contract InterestingRecipe is Ownable, UniswapV2Recipe {
         }
     }
 
-    function setBPool(address _underlying, address _bPool) external onlyOwner {
-        underlyingToBPool[_underlying] = _bPool;
-    }
-
-
     function _swapToToken(address _wrapped, uint256 _amount, address _pie) internal override {
         address underlying = wrappedToUnderlying[_wrapped];
         address protocol  = wrappedToProtocol[_wrapped];
         bytes32 identifier = protocolIdentifier[protocol];
 
-        // is this default for bytes32?
-        if (identifier == "") {
-            super._swapToToken(_wrapped, _amount, _pie);
-        }
-        IBPool bPool = IBPool(underlyingToBPool[underlying]);
-        uint256 ethAmount = calcEthAmount(_wrapped, _amount);
-        IERC20(WETH).safeApprove(address(bPool), ethAmount);
-
         if (identifier == keccak256("aave.protocol")) {
             // Aave is 1 to 1 exchange rate
-            bPool.swapExactAmountOut(address(WETH), ethAmount, underlying, _amount, uint256(-1));
+            super._swapToToken(underlying, _amount, _pie);
             IAaveLendingPool aave = IAaveLendingPool(protocol);
             aave.deposit(_wrapped, _amount, 0);
             IERC20(_wrapped).safeApprove(_pie, _amount);
@@ -86,22 +68,14 @@ contract InterestingRecipe is Ownable, UniswapV2Recipe {
             // See scripts/cTokenExchangeRate.sol
             // cToken --> Underlying asset
             uint256 underlyingAmount = _amount.mul(exchangeRate).div(10**18);
-            bPool.swapExactAmountOut(address(WETH), ethAmount, underlying, underlyingAmount, uint256(-1));
+            super._swapToToken(underlying, underlyingAmount, _pie);
             // https://compound.finance/docs/ctokens#mint
             assert(cToken.mint(underlyingAmount) == 0);
 
             IERC20(_wrapped).safeApprove(_pie, _amount);
+        } else {
+            super._swapToToken(_wrapped, _amount, _pie);
         }
-        revert("NOT_SUPPORTED");
-    }
-
-    // this is needed because "Solidity stack too deep", e.g. too much variables declared
-    struct bPoolData {
-        uint256 wethBalance;
-        uint256 wethWeight;
-        uint256 swapFee;
-        uint256 tokenBalance;
-        uint256 tokenWeight;
     }
 
     function calcEthAmount(address _wrapped, uint256 _buyAmount) internal override returns(uint256) {
@@ -109,29 +83,9 @@ contract InterestingRecipe is Ownable, UniswapV2Recipe {
         address protocol = wrappedToProtocol[_wrapped];
         bytes32 identifier = protocolIdentifier[protocol];
 
-        // is this default for bytes32?
-        if (identifier == "") {
-            super.calcEthAmount(_wrapped, _buyAmount);
-        }
-        IBPool bPool = IBPool(underlyingToBPool[underlying]);
-        bPoolData memory bPoolData = bPoolData({
-            wethBalance: bPool.getBalance(address(WETH)),
-            wethWeight:  bPool.getDenormalizedWeight(address(WETH)),
-            swapFee: bPool.getSwapFee(),
-            tokenBalance: bPool.getBalance(underlying),
-            tokenWeight: bPool.getDenormalizedWeight(underlying)
-        });
-
         if (identifier == keccak256("aave.protocol")) {
             // Aave: 1 to 1
-            return bPool.calcInGivenOut(
-                bPoolData.wethBalance,
-                bPoolData.wethWeight,
-                bPoolData.tokenBalance,
-                bPoolData.tokenWeight,
-                _buyAmount,
-                bPoolData.swapFee
-            );
+            return super.calcEthAmount(underlying, _buyAmount);
         }
         else if (identifier == keccak256("compound.protocol")) {
             // convert _buyAmount of comp to underlying token
@@ -145,15 +99,9 @@ contract InterestingRecipe is Ownable, UniswapV2Recipe {
             // See scripts/cTokenExchangeRate.sol
             // cToken --> Underlying asset
             uint256 underlyingAmount = _buyAmount.mul(exchangeRate).div(10**18);
-            return bPool.calcInGivenOut(
-                bPoolData.wethBalance,
-                bPoolData.wethWeight,
-                bPoolData.tokenBalance,
-                bPoolData.tokenWeight,
-                underlyingAmount,
-                bPoolData.swapFee
-            );
+            return super.calcEthAmount(underlying, underlyingAmount);
+        } else {
+            super.calcEthAmount(_wrapped, _buyAmount);
         }
-        revert("NOT_SUPPORTED");
     }
 }
