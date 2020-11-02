@@ -15,12 +15,17 @@ contract InterestingRecipe is Ownable, UniswapV2Recipe {
     // IDEA: current token supports are hard coded.
     // Use calldata to create a more generalized protocol
 
+    // map A/C token to underlying asset
     mapping(address => address) public wrappedToUnderlying;
+    // map underlying asset to A/C token.
     mapping(address => address) public underlyingToWrapped;
 
-    // map to Aave lendingpool (same for every A token)
-    // map to Compound C token contract (differs every C token)
+    // map to Aave lendingpool
+    // map to Compound comptroller (not being used in contract)
     mapping(address => address) public wrappedToProtocol;
+
+    // map Aave lendingpool to aave.protocol
+    // map Compound comptroller to compound.protocol
     mapping(address => bytes32) public protocolIdentifier;
 
     mapping(address => address) public underlyingToBPool;
