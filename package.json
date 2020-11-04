@@ -4,8 +4,8 @@
   "description": "Pool ETH and create pies",
   "main": "index.js",
   "scripts": {
-    "test": "npx buidler test",
-    "compile": "npx buidler compile",
+    "test": "npx hardhat test",
+    "compile": "npx hardhat compile",
     "clean": "rm -rf ./artifacts && rm -rf ./cache",
     "remix": "remixd -s . --remix-ide https://remix.ethereum.org"
   },
@@ -26,6 +26,10 @@
     "typescript": "^4.0.3"
   },
   "dependencies": {
+    "@emilianobonassi/gas-saver": "https://github.com/MickdeGraaf/gas-saver#feature/solidity-0.6.0",
+    "@pie-dao/mock-contracts": "^0.0.7",
+    "@pie-dao/proxy": "^0.0.6",
+    "@uniswap/v2-core": "^1.0.1",
     "@openzeppelin/contracts": "^3.2.1-solc-0.7",
     "dotenv": "^8.2.0"
   }
