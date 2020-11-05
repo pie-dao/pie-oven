@@ -34,7 +34,14 @@ task("env", "Prints env keys")
 export default {
   // This is a sample solc configuration that specifies which version of solc to use
   solidity: {
-    version: "0.7.1",
+    compilers: [
+      {
+        version: "0.6.4"
+      },
+      {
+        version: "0.7.1"
+      }
+    ]
   },
   networks: {
     mainnet: {
