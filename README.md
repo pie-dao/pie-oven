@@ -11,5 +11,32 @@ yarn compile
 yarn test
 ```
 
-Mainnet: 0x5e8dffda3d69f01fa1aaf941e28f935d773db61a (Defi+L)
-Goerli: 0x4f76c4138a679384B3917Be82Bcc76568946BD3c (TestFacets)
+## Deploy oven
+
+Create .env file
+
+```
+INFURA_API_KEY=
+MAINNET_PRIVATE_KEY=
+GOERLI_PRIVATE_KEY=
+ETHERSCAN_API=
+```
+
+### Using factory
+**Deploy factory**
+
+npx hardhat run --network {goerli/mainnet} scripts/deployOvenFactory.ts
+
+**Deploy emty oven**
+
+NOTE: change variables at top of scropt
+
+npx hardhat run --network {goerli/mainnet} scripts/deployEmptyOvenUsingFactory.ts
+
+**Deploy filled oven**
+
+NOTE: change variables at top of scropt
+
+npx hardhat run --network {goerli/mainnet} scripts/deployOvenUsingFactory.ts
+
+
