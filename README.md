@@ -29,14 +29,14 @@ npx hardhat run --network {goerli/mainnet} scripts/deployOvenFactory.ts
 
 **Deploy emty oven**
 
-NOTE: change variables at top of scropt
+NOTE: change variables at top of script
 
-npx hardhat run --network {goerli/mainnet} scripts/deployEmptyOvenUsingFactory.ts
+> npx hardhat run --network {goerli/mainnet} scripts/deployEmptyOvenUsingFactory.ts
 
 **Deploy filled oven**
 
-NOTE: change variables at top of scropt
+NOTE: change variables at top of script
 
-npx hardhat run --network {goerli/mainnet} scripts/deployOvenUsingFactory.ts
+> npx hardhat run --network {goerli/mainnet} scripts/deployOvenUsingFactory.ts
 
 
