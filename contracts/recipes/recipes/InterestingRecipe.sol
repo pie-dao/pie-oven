@@ -78,7 +78,7 @@ contract InterestingRecipe is UniswapV2BalRecipe {
         }
     }
 
-    function calcEthAmount(address _wrapped, uint256 _buyAmount) internal override returns(uint256) {
+    function calcEthAmount(address _wrapped, uint256 _buyAmount) internal override view returns(uint256) {
         address underlying = wrappedToUnderlying[_wrapped];
         address protocol = wrappedToProtocol[_wrapped];
         bytes32 identifier = protocolIdentifier[protocol];
