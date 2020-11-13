@@ -67,7 +67,7 @@ contract InterestingRecipe is UniswapV2BalRecipe {
             IERC20(_wrapped).safeApprove(_pie, _amount);
         } else if (identifier == keccak256("compound.protocol")) {
             ICompoundCToken cToken = ICompoundCToken(_wrapped);
-            uint256 exchangeRate = cToken.exchangeRateCurrent(); // wrapped to underlying
+            uint256 exchangeRate = cToken.exchangeRateStored(); // wrapped to underlying
 
             // not sure if this is correct
             // https://compound.finance/docs/ctokens
@@ -102,7 +102,7 @@ contract InterestingRecipe is UniswapV2BalRecipe {
             // convert get price of underlying token with bpool
 
             ICompoundCToken cToken = ICompoundCToken(_wrapped);
-            uint256 exchangeRate = cToken.exchangeRateCurrent(); // wrapped to underlying
+            uint256 exchangeRate = cToken.exchangeRateStored(); // wrapped to underlying
 
             // not sure if this is correct
             // https://compound.finance/docs/ctokens
