@@ -24,7 +24,6 @@ contract OvenFactoryContract is Ownable {
         CreateOven(address(0), address(0));
     }
 
-    // TODO, everyone can create an oven?
     function CreateOven(address _pie, address _recipe) public {
         require(defaultController != address(0), "CONTROLLER_NOT_SET");
 
