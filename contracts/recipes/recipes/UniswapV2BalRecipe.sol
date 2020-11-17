@@ -33,6 +33,7 @@ contract UniswapV2BalRecipe is UniswapV2Recipe {
 
     function calcToPie(address _pie, uint256 _poolAmount)
         public
+        virtual
         override
         view
         returns (uint256)

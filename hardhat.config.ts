@@ -44,9 +44,17 @@ export default {
     ]
   },
   networks: {
+    fork : {
+      url: `http://127.0.0.1:8545/`,
+      gasPrice: 42000000000,
+      accounts: [
+        MAINNET_PRIVATE_KEY
+      ],
+      timeout: 2147483647
+    },
     mainnet: {
       url: `https://mainnet.infura.io/v3/${INFURA_API_KEY}`,
-      gasPrice: 20000000000,
+      gasPrice: 42000000000,
       accounts: [
         MAINNET_PRIVATE_KEY,
       ].filter((item) => item !== "")

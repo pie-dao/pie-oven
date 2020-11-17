@@ -59,11 +59,15 @@ contract InterestingRecipe is UniswapV2BalRecipe {
 
         if (identifier == keccak256("aave.protocol")) {
             // Aave is 1 to 1 exchange rate
+            IAaveLendingPoolAddressesProvider aaveProvider = IAaveLendingPoolAddressesProvider(protocol);
+
             super._swapToToken(underlying, _amount, _pie);
             IAaveLendingPool aave = IAaveLendingPool(
-                IAaveLendingPoolAddressesProvider(protocol).getLendingPool()
+                aaveProvider.getLendingPool()
             );
-            aave.deposit(_wrapped, _amount, 0);
+            IERC20(underlying).safeApprove(aaveProvider.getLendingPoolCore(), _amount);
+            aave.deposit(underlying, _amount, 0);
+
             IERC20(_wrapped).safeApprove(_pie, _amount);
         } else if (identifier == keccak256("compound.protocol")) {
             ICompoundCToken cToken = ICompoundCToken(_wrapped);
@@ -74,7 +78,9 @@ contract InterestingRecipe is UniswapV2BalRecipe {
             // See scripts/cTokenExchangeRate.sol
             // cToken --> Underlying asset
             uint256 underlyingAmount = _amount.mul(exchangeRate).div(10**18);
+
             super._swapToToken(underlying, underlyingAmount, _pie);
+            IERC20(underlying).safeApprove(address(cToken), underlyingAmount);
             // https://compound.finance/docs/ctokens#mint
             assert(cToken.mint(underlyingAmount) == 0);
 
@@ -113,5 +119,36 @@ contract InterestingRecipe is UniswapV2BalRecipe {
         } else {
             super.calcEthAmount(_wrapped, _buyAmount);
         }
+    }
+
+    function calcToPie(address _pie, uint256 _poolAmount)
+        public
+        override
+        view
+        returns (uint256)
+    {
+        (address[] memory tokens, uint256[] memory amounts) = IPSmartPool(_pie)
+            .calcTokensForAmount(_poolAmount);
+
+        uint256 totalEth = 0;
+
+        for (uint256 i = 0; i < tokens.length; i++) {
+            if (wrappedToUnderlying[tokens[i]] != address(0)) {
+                totalEth += calcEthAmount(tokens[i], amounts[i]);
+            } else if (tokenToBPool[tokens[i]] != address(0)) {
+                totalEth += calcEthAmount(tokens[i], amounts[i]);
+            } else if (registry.inRegistry(tokens[i])) {
+                totalEth += calcToPie(tokens[i], amounts[i]);
+            } else {
+                (uint256 reserveA, uint256 reserveB) = UniLib.getReserves(
+                    address(uniswapFactory),
+                    address(WETH),
+                    tokens[i]
+                );
+                totalEth += UniLib.getAmountIn(amounts[i], reserveA, reserveB);
+            }
+        }
+
+        return totalEth;
     }
 }
