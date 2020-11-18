@@ -99,7 +99,7 @@ contract InterestingRecipe is UniswapV2BalRecipe {
 
             ICompoundCToken cToken = ICompoundCToken(_wrapped);
             uint256 exchangeRate = cToken.exchangeRateCurrent(); // wrapped to underlying
-            uint256 underlyingAmount = _buyAmount.mul(exchangeRate).div(10**18);
+            uint256 underlyingAmount = _buyAmount.mul(exchangeRate).div(10**18).add(1);
             return super.calcEthAmount(underlying, underlyingAmount);
         } else {
             return super.calcEthAmount(_wrapped, _buyAmount);
