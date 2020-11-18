@@ -59,13 +59,9 @@ contract InterestingRecipe is UniswapV2BalRecipe {
             // Aave is 1 to 1 exchange rate
             IAaveLendingPoolAddressesProvider aaveProvider = IAaveLendingPoolAddressesProvider(protocol);
 
-            super._swapToToken(underlying, _amount, _pie);
+            super._swapToToken(underlying, _amount, address(aaveProvider.getLendingPoolCore()));
             IAaveLendingPool aave = IAaveLendingPool(
                 aaveProvider.getLendingPool()
-            );
-            IERC20(underlying).safeApprove(
-                aaveProvider.getLendingPoolCore(),
-                _amount
             );
             aave.deposit(underlying, _amount, 0);
 
@@ -78,10 +74,9 @@ contract InterestingRecipe is UniswapV2BalRecipe {
             // https://compound.finance/docs/ctokens
             // See scripts/cTokenExchangeRate.sol
             // cToken --> Underlying asset
-            uint256 underlyingAmount = _amount.mul(exchangeRate).div(10**18);
+            uint256 underlyingAmount = _amount.mul(exchangeRate).div(10**18).add(1);
 
-            super._swapToToken(underlying, underlyingAmount, _pie);
-            IERC20(underlying).safeApprove(address(cToken), underlyingAmount);
+            super._swapToToken(underlying, underlyingAmount, address(cToken));
             // https://compound.finance/docs/ctokens#mint
             assert(cToken.mint(underlyingAmount) == 0);
 

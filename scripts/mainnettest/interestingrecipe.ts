@@ -33,18 +33,18 @@ async function mainnet2() {
     tx = await recipe.updateMapping(
       [
         "0xba3D9687Cf50fE253cd2e1cFeEdE1d6787344Ed5",
-        "0x70e36f6BF80a52b3B46b3aF8e106CC0ed743E8e4",
-      //  "0x35A18000230DA775CAc24873d00Ff85BccdeD550"
+        //"0x70e36f6BF80a52b3B46b3aF8e106CC0ed743E8e4",
+       "0x35A18000230DA775CAc24873d00Ff85BccdeD550"
       ],
       [
         "0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9",
-        "0xc00e94cb662c3520282e6f5717214004a7f26888",
-      //  "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984"
+       // "0xc00e94cb662c3520282e6f5717214004a7f26888",
+       "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984"
       ],
       [
         AAVE_LP_ADDRESS_PROVIDER,
-        COMPTROLLER,
-      //  COMPTROLLER
+        //COMPTROLLER,
+       COMPTROLLER
       ]
     )
 
@@ -55,7 +55,7 @@ async function mainnet2() {
     // await recipe.setBPool("0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F", "0xe5ac9548275787cd86df2350248614afab0088ee")
 
     console.log("calcToPie")
-    let x = await recipe.calcToPie(
+    let x = await recipe.callStatic.calcToPie(
         "0xb8d379c83a10b073565bd486ea87147e7117b025",
         ethers.utils.parseEther("0.5")
     )
