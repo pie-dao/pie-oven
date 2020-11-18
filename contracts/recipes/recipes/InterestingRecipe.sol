@@ -17,7 +17,6 @@ contract InterestingRecipe is UniswapV2BalRecipe {
     // map A/C token to underlying asset
     mapping(address => address) public wrappedToUnderlying;
     // map underlying asset to A/C token.
-    mapping(address => address) public underlyingToWrapped;
 
     // map to Aave LendingPoolAddressesProvider
     // map to Compound comptroller (not being used in contract)
@@ -43,7 +42,6 @@ contract InterestingRecipe is UniswapV2BalRecipe {
         require(_wrapped.length == _protocol.length, "UNEQUAL_LENGTH");
         for (uint256 i = 0; i < _wrapped.length; i++) {
             wrappedToUnderlying[_wrapped[i]] = _underlying[i];
-            underlyingToWrapped[_underlying[i]] = _wrapped[i];
             wrappedToProtocol[_wrapped[i]] = _protocol[i];
         }
     }
@@ -65,7 +63,10 @@ contract InterestingRecipe is UniswapV2BalRecipe {
             IAaveLendingPool aave = IAaveLendingPool(
                 aaveProvider.getLendingPool()
             );
-            IERC20(underlying).safeApprove(aaveProvider.getLendingPoolCore(), _amount);
+            IERC20(underlying).safeApprove(
+                aaveProvider.getLendingPoolCore(),
+                _amount
+            );
             aave.deposit(underlying, _amount, 0);
 
             IERC20(_wrapped).safeApprove(_pie, _amount);
@@ -117,7 +118,7 @@ contract InterestingRecipe is UniswapV2BalRecipe {
             uint256 underlyingAmount = _buyAmount.mul(exchangeRate).div(10**18);
             return super.calcEthAmount(underlying, underlyingAmount);
         } else {
-            super.calcEthAmount(_wrapped, _buyAmount);
+            return super.calcEthAmount(_wrapped, _buyAmount);
         }
     }
 

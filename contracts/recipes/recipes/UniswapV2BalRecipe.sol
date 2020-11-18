@@ -90,7 +90,7 @@ contract UniswapV2BalRecipe is UniswapV2Recipe {
                 );
         } else {
             // no bPool calc regularly
-            super.calcEthAmount(_token, _buyAmount);
+            return super.calcEthAmount(_token, _buyAmount);
         }
     }
 }
