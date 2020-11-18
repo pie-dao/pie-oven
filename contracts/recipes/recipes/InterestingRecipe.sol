@@ -72,7 +72,7 @@ contract InterestingRecipe is UniswapV2BalRecipe {
             IERC20(_wrapped).safeApprove(_pie, _amount);
         } else if (identifier == keccak256("compound.protocol")) {
             ICompoundCToken cToken = ICompoundCToken(_wrapped);
-            uint256 exchangeRate = cToken.exchangeRateStored(); // wrapped to underlying
+            uint256 exchangeRate = cToken.exchangeRateCurrent(); // wrapped to underlying
 
             // not sure if this is correct
             // https://compound.finance/docs/ctokens
@@ -94,7 +94,6 @@ contract InterestingRecipe is UniswapV2BalRecipe {
     function calcEthAmount(address _wrapped, uint256 _buyAmount)
         internal
         override
-        view
         returns (uint256)
     {
         address underlying = wrappedToUnderlying[_wrapped];
@@ -109,7 +108,7 @@ contract InterestingRecipe is UniswapV2BalRecipe {
             // convert get price of underlying token with bpool
 
             ICompoundCToken cToken = ICompoundCToken(_wrapped);
-            uint256 exchangeRate = cToken.exchangeRateStored(); // wrapped to underlying
+            uint256 exchangeRate = cToken.exchangeRateCurrent(); // wrapped to underlying
 
             // not sure if this is correct
             // https://compound.finance/docs/ctokens
@@ -125,7 +124,6 @@ contract InterestingRecipe is UniswapV2BalRecipe {
     function calcToPie(address _pie, uint256 _poolAmount)
         public
         override
-        view
         returns (uint256)
     {
         (address[] memory tokens, uint256[] memory amounts) = IPSmartPool(_pie)

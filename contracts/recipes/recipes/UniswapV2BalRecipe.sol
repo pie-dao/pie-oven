@@ -35,7 +35,6 @@ contract UniswapV2BalRecipe is UniswapV2Recipe {
         public
         virtual
         override
-        view
         returns (uint256)
     {
         (address[] memory tokens, uint256[] memory amounts) = IPSmartPool(_pie)
@@ -65,7 +64,6 @@ contract UniswapV2BalRecipe is UniswapV2Recipe {
         internal
         virtual
         override
-        view
         returns (uint256)
     {
         if (tokenToBPool[_token] != address(0)) {

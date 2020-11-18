@@ -117,7 +117,6 @@ contract UniswapV2Recipe is Ownable, ChiGasSaver {
     function calcToPie(address _pie, uint256 _poolAmount)
         public
         virtual
-        view
         returns (uint256)
     {
         (address[] memory tokens, uint256[] memory amounts) = IPSmartPool(_pie)
@@ -144,7 +143,6 @@ contract UniswapV2Recipe is Ownable, ChiGasSaver {
     function calcEthAmount(address _token, uint256 _buyAmount)
         internal
         virtual
-        view
         returns (uint256)
     {
         if (registry.inRegistry(_token)) {
