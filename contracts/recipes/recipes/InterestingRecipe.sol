@@ -69,11 +69,6 @@ contract InterestingRecipe is UniswapV2BalRecipe {
         } else if (identifier == keccak256("compound.protocol")) {
             ICompoundCToken cToken = ICompoundCToken(_wrapped);
             uint256 exchangeRate = cToken.exchangeRateCurrent(); // wrapped to underlying
-
-            // not sure if this is correct
-            // https://compound.finance/docs/ctokens
-            // See scripts/cTokenExchangeRate.sol
-            // cToken --> Underlying asset
             uint256 underlyingAmount = _amount.mul(exchangeRate).div(10**18).add(1);
 
             super._swapToToken(underlying, underlyingAmount, address(cToken));
@@ -100,15 +95,10 @@ contract InterestingRecipe is UniswapV2BalRecipe {
             return super.calcEthAmount(underlying, _buyAmount);
         } else if (identifier == keccak256("compound.protocol")) {
             // convert _buyAmount of comp to underlying token
-            // convert get price of underlying token with bpool
+            // convert get price of underlying token with uni/bpool
 
             ICompoundCToken cToken = ICompoundCToken(_wrapped);
             uint256 exchangeRate = cToken.exchangeRateCurrent(); // wrapped to underlying
-
-            // not sure if this is correct
-            // https://compound.finance/docs/ctokens
-            // See scripts/cTokenExchangeRate.sol
-            // cToken --> Underlying asset
             uint256 underlyingAmount = _buyAmount.mul(exchangeRate).div(10**18);
             return super.calcEthAmount(underlying, underlyingAmount);
         } else {
