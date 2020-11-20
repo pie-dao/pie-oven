@@ -2,7 +2,7 @@ pragma solidity 0.6.4;
 
 import "../interfaces/IWETH.sol";
 import {UniswapV2Library as UniLib} from "./UniswapV2Library.sol";
-import "./LibSafeApproval.sol";
+import "./LibSafeApprove.sol";
 import "../interfaces/IPSmartPool.sol";
 import "../interfaces/IUniswapV2Factory.sol";
 import "../interfaces/IUniswapV2Exchange.sol";
@@ -163,7 +163,7 @@ contract UniswapV2Recipe is Ownable, ChiGasSaver {
         uint256 _poolAmount,
         uint256 _minEthAmount
     ) external revertIfPaused saveGas(gasSponsor) {
-        uint256 totalEth = calcToPie(_pie, _poolAmount);
+        uint256 totalEth = calcToEth(_pie, _poolAmount);
         require(_minEthAmount <= totalEth, "Output ETH amount too low");
         IPSmartPool pie = IPSmartPool(_pie);
 
@@ -173,40 +173,48 @@ contract UniswapV2Recipe is Ownable, ChiGasSaver {
         pie.exitPool(_poolAmount);
 
         for (uint256 i = 0; i < tokens.length; i++) {
-            (uint256 reserveA, uint256 reserveB) = UniLib.getReserves(
-                address(uniswapFactory),
-                tokens[i],
-                address(WETH)
-            );
-            uint256 wethAmountOut = UniLib.getAmountOut(
-                amounts[i],
-                reserveA,
-                reserveB
-            );
-            IUniswapV2Exchange pair = IUniswapV2Exchange(
-                UniLib.pairFor(
-                    address(uniswapFactory),
-                    tokens[i],
-                    address(WETH)
-                )
-            );
-
-            // Uniswap V2 does not pull the token
-            IERC20(tokens[i]).transfer(address(pair), amounts[i]);
-
-            if (token0Or1(address(WETH), tokens[i]) == 0) {
-                pair.swap(0, wethAmountOut, address(this), new bytes(0));
-            } else {
-                pair.swap(wethAmountOut, 0, address(this), new bytes(0));
-            }
+            
         }
 
         WETH.withdraw(totalEth);
         msg.sender.transfer(address(this).balance);
     }
 
+    function _swapToEth(address _token, uint256 _amount) internal {
+        if(registry.inRegistry(_token)) {
+            //_fromPie(_token, _amount);
+        } else {
+            (uint256 reserveA, uint256 reserveB) = UniLib.getReserves(
+                address(uniswapFactory),
+                _token,
+                address(WETH)
+            );
+            uint256 wethAmountOut = UniLib.getAmountOut(
+                _amount,
+                reserveA,
+                reserveB
+            );
+            IUniswapV2Exchange pair = IUniswapV2Exchange(
+                UniLib.pairFor(
+                    address(uniswapFactory),
+                    _token,
+                    address(WETH)
+                )
+            );
+
+            // Uniswap V2 does not pull the token
+            IERC20(_token).transfer(address(pair), _amount);
+
+            if (token0Or1(address(WETH), _token) == 0) {
+                pair.swap(0, wethAmountOut, address(this), new bytes(0));
+            } else {
+                pair.swap(wethAmountOut, 0, address(this), new bytes(0));
+            }
+        }
+    }
+
     function calcToEth(address _pie, uint256 _poolAmountOut)
-        external
+        public
         view
         returns (uint256)
     {
