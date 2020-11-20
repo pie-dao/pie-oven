@@ -159,6 +159,19 @@ contract Recipe /*is Ownable */{
         return outputAmount;
     }
 
+    function swapGivenInputToETH(
+        address _inputToken,
+        uint256 _inputAmount,
+        uint256 _minOutput,
+        address _receiver
+    ) external returns(uint256) {
+        require(IERC20(_inputToken).transferFrom(msg.sender, address(this), _inputAmount), "Transfer failed");
+        return _swapGivenInput(_inputToken, address(WETH), _inputAmount, _minOutput, address(this));
+        WETH.withdraw(WETH.balanceOf(address(this)));
+        uint256 ethBalance = address(this).balance;
+        payable(_receiver).transfer(ethBalance);
+    }
+
     function _calcInputFromOutput(
         address _inputToken,
         address _outputToken,
