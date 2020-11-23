@@ -8,6 +8,8 @@ import "../interfaces/ISmartPoolRegistry.sol";
 import "../interfaces/IPSmartPool.sol";
 import {UniswapV2Library as UniLib} from "./UniswapV2Library.sol";
 
+import "hardhat/console.sol";
+
 
 contract Recipe /*is Ownable */{
     ISmartPoolRegistry public constant registry = ISmartPoolRegistry(
@@ -129,19 +131,22 @@ contract Recipe /*is Ownable */{
                 _swapGivenInput(tokens[i], address(WETH), amounts[i], 0, address(0));
             }
 
-        } else {
+        } else if(_inputToken != address(WETH)) {
             // TODO check if we are already holding weth as input
             // If needs to be swapped to normal token
+            console.log("swapping to weth");
             LibSafeApprove.safeApprove(inputToken, address(uniRouter), _inputAmount);
-            uniRouter.swapExactTokensForTokens(_inputAmount, _minOutput, makeRoute(_inputToken, address(WETH)), address(this), uint256(-1));
+            uniRouter.swapExactTokensForTokens(_inputAmount, 0, makeRoute(_inputToken, address(WETH)), address(this), uint256(-1))[0];
+
+            uint256 WethBalance = WETH.balanceOf(address(this));
+
+            return _swapGivenInput(address(WETH), _outputToken, WethBalance, 0, address(0));
+        } else {
+            LibSafeApprove.safeApprove(WETH, address(uniRouter), _inputAmount);
+            uniRouter.swapExactTokensForTokens(_inputAmount, 0, makeRoute(address(WETH), _outputToken), address(this), uint256(-1));
         }
         
         uint256 WethBalance = WETH.balanceOf(address(this));
-
-        // if output != WETH swap it to the output token
-        if(_outputToken != address(WETH)) {
-            _swapGivenInput(address(WETH), _outputToken, WethBalance, 0, address(this));
-        }
 
         //if called recursively don't send output to another address
         if(_receiver != address(0)) {
@@ -195,7 +200,7 @@ contract Recipe /*is Ownable */{
     ) public view returns(uint256) {
 
         uint256 ethAmount = 0;
-
+        console.log("Registry address: ", address(registry));
         // If output is pie, buy all of the underlyings
         if(registry.inRegistry(_outputToken)) {
             IPSmartPool pie = IPSmartPool(_outputToken);
@@ -209,7 +214,7 @@ contract Recipe /*is Ownable */{
             (uint256 reserveA, uint256 reserveB) = UniLib.getReserves(
                     address(uniRouter.factory()),
                     address(WETH),
-                    _inputToken
+                    _outputToken
                 );
             ethAmount = UniLib.getAmountIn(_outputAmount, reserveA, reserveB);
         }
@@ -227,6 +232,9 @@ contract Recipe /*is Ownable */{
         uint256 _inputAmount
     ) public view returns(uint256) {
 
+        console.log("calcOutputFromInput");
+        console.log(_inputToken, _outputToken, _inputAmount);
+
         uint256 ethAmount;
 
         if(registry.inRegistry(_inputToken)) {
@@ -237,7 +245,7 @@ contract Recipe /*is Ownable */{
             for(uint256 i = 0; i < tokens.length; i++) {
                 ethAmount += calcOutputFromInput(tokens[i], address(WETH), amounts[i]);
             }
-        } else {
+        } else if(_inputToken != address(WETH)) {
             //  function getAmountOut(uint amountIn, uint reserveIn, uint reserveOut)
             (uint256 reserveA, uint256 reserveB) = UniLib.getReserves(
                     address(uniRouter.factory()),
@@ -246,13 +254,18 @@ contract Recipe /*is Ownable */{
             );
 
             ethAmount = UniLib.getAmountOut(_inputAmount, reserveA, reserveB);
-        }
 
-        if(_inputToken != address(WETH)) {
-            return calcOutputFromInput(_inputToken, _outputToken, ethAmount);
+            return calcOutputFromInput(address(WETH), _outputToken, ethAmount);
         }
+        else {
+            (uint256 reserveA, uint256 reserveB) = UniLib.getReserves(
+                    address(uniRouter.factory()),
+                    address(WETH),
+                    _outputToken
+            );
 
-        return ethAmount;
+            return UniLib.getAmountOut(_inputAmount, reserveA, reserveB);
+        }
     }
 
     // janky code to create non fixed size memory array

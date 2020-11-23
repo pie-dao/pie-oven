@@ -2,6 +2,7 @@ import { task } from "hardhat/config";
 import "@nomiclabs/hardhat-etherscan";
 import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-waffle";
+import "hardhat-typechain";
 
 require('dotenv').config()
 const INFURA_API_KEY = process.env.INFURA_API_KEY || "";

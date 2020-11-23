@@ -5,3 +5,4 @@ node_modules
 #Buidler files
 cache
 artifacts
+typechain
