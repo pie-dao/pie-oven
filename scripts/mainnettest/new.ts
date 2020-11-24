@@ -35,9 +35,14 @@ async function main(){
     await dai.approve(recipe.address, constants.MaxUint256);
     await recipe.swapGivenInput(dai.address, link.address, parseEther("1"), 0, account);
 
+
+    const daiBalance = await dai.balanceOf(account);
     const linkBalance = await link.balanceOf(account);
 
     console.log("Link balance after swap from dai", linkBalance.toString());
+    console.log("Dai balance after swap from dai", daiBalance.toString());
+
+    await recipe.swapGivenOutputFromEth("0xad6a626ae2b43dcb1b39430ce496d2fa0365ba9c", parseEther("1"), { value: parseEther("1")});
 
 }
 main()

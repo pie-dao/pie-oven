@@ -140,7 +140,7 @@ contract Recipe /*is Ownable */{
 
             uint256 WethBalance = WETH.balanceOf(address(this));
 
-            return _swapGivenInput(address(WETH), _outputToken, WethBalance, 0, address(0));
+            return _swapGivenInput(address(WETH), _outputToken, WethBalance, 0, _receiver);
         } else {
             LibSafeApprove.safeApprove(WETH, address(uniRouter), _inputAmount);
             uniRouter.swapExactTokensForTokens(_inputAmount, 0, makeRoute(address(WETH), _outputToken), address(this), uint256(-1));
