@@ -50,7 +50,7 @@ contract Oven is AccessControl {
     }
 
     modifier onlyRole(bytes32 _role) {
-        require(hasRole(CONTROLLER_ROLE, msg.sender), "NOT_CONTROLLER");
+        require(hasRole(_role, msg.sender), "AUTH_FAILED");
         _;
     }
 
