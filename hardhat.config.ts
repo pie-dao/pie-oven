@@ -2,6 +2,7 @@ import { task } from "hardhat/config";
 import "@nomiclabs/hardhat-etherscan";
 import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-waffle";
+import { bake } from './scripts/bake';
 
 require('dotenv').config()
 const INFURA_API_KEY = process.env.INFURA_API_KEY || "";
@@ -21,6 +22,14 @@ task("accounts", "Prints the list of accounts")
 });
 
 task("env", "Prints env keys")
+.setAction(async(taskArgs, { ethers, run }) =>  {
+    console.log("Infura:", INFURA_API_KEY)
+    console.log("mainnet:", MAINNET_PRIVATE_KEY)
+    console.log("goerli:", GOERLI_PRIVATE_KEY)
+    console.log("etherscan:", ETHERSCAN_API)
+});
+
+task("bot", "Run bots")
 .setAction(async(taskArgs, { ethers, run }) =>  {
     console.log("Infura:", INFURA_API_KEY)
     console.log("mainnet:", MAINNET_PRIVATE_KEY)
@@ -51,58 +60,16 @@ task("bake", "Generate call data for bake function")
     taskArgs.slippage = parseInt(taskArgs.slippage)
 
     let addresses = []
-    let inputAmount = ethers.BigNumber.from("0")
+    const res = await bake(
+      taskArgs.oven, 
+      taskArgs.startBlock,
+      taskArgs.slippage,
+      taskArgs.maxAddress,
+      taskArgs.minAddress,
+      taskArgs.minDeposit
+    );
 
-    const oven = await ethers.getContractAt("Oven", taskArgs.oven);
-    const pie_address = await oven.pie();
-    const recipe_address = await oven.recipe();
-    const recipe = await ethers.getContractAt("TestPieRecipe", recipe_address);
-    console.log("\tUsing pie @", pie_address);
-    console.log("\n~Getting addresses~")
-    const deposits = await oven.queryFilter(oven.filters.Deposit(), taskArgs.startBlock, "latest")
-    for(const deposit of deposits) {
-        const user = deposit.args.user;
-        const balance = await oven.ethBalanceOf(user);
-        if (addresses.includes(user)) {
-            continue
-        }
-
-        if (balance.lt(taskArgs.minDeposit)) {
-            console.log("Skipping", user,"(", balance.toString(), ")...")
-            continue
-        }
-        console.log("Adding", user, "(", balance.toString(), ")...")
-        addresses.push(user)
-        inputAmount = inputAmount.add(ethers.BigNumber.from(balance))
-
-        if (addresses.length >= taskArgs.maxAddress) {
-            console.log("Max addressess reached, continuing..")
-            break
-        }
-    }
-    if (addresses.length < taskArgs.minAddress) {
-        throw new Error("Addressess is less than min_addresses")
-    }
-    console.log("~Done getting addresses~\n")
-    console.log("Calculating output amount...")
-    const etherJoinAmount = await recipe.calcToPie(pie_address, ethers.utils.parseEther("1"));
-    const outputAmount =  inputAmount.mul(ethers.utils.parseEther("1")).div(etherJoinAmount).div(100).mul(100-taskArgs.slippage);
-    console.log("Swapping", inputAmount.toString(), "for", outputAmount.toString())
-
-    console.log("Start baking...")
-
-    const call = oven.interface.encodeFunctionData("bake", [addresses, outputAmount, inputAmount])
-
-    console.log("\n\nCalldata:\n\n", call)
-    // const baketx = await oven.bake(
-    //    addresses,
-    //    outputAmount,
-    //    inputAmount,
-    //    {
-    //        gasLimit: 5000000
-    //    }
-    // )
-    // console.log("Baking in process @", baketx.hash)
+    console.log('res', res);
 });
 
 
