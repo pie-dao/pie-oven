@@ -11,6 +11,25 @@ yarn compile
 yarn test
 ```
 
+## Bake call
+
+This call will generate the calldata needed to bake
+
+Get some help:
+
+`npx hardhat --network mainnet bake --help`
+
+Example call:
+
+```
+npx hardhat --network goerli bake \
+--min-deposit 100000000000000000 \
+--min-address 1 \
+--max-address 6 \
+--slippage 3 \
+--oven 0x26fC22e1A99d4FFb5e0C6Ad33a7b9319958910E6 \
+--start-block 3604155
+```
 ## Deploy oven
 
 Create .env file
