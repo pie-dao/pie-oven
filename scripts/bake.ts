@@ -1,15 +1,30 @@
 const hre = require("hardhat");
 const utils = hre.ethers.utils;
 
+//
+// settings
+//
 
+// minimal deposit of a user to be included in the baking
 const minAmount = utils.parseEther("0.1");
-const min_addresses = 2;
+// minimal amount of addressess to be included in one baking session
+const min_addresses = 1;
+// maximal amount of addressess to be included in one baking session
 const max_addresses = 6;
+// max slippage
 const slippage = 3; // max 3%
 
-
+// the address of the oven, bake function is called on this address
 const oven_address = "0x26fC22e1A99d4FFb5e0C6Ad33a7b9319958910E6";
+// the start block to identify user deposits.
 const start_block = 3604155
+
+//
+// end settings
+//
+
+
+// npx hardhat run --network mainnet scripts/bake.ts
 
 async function bake() {
     const ethers = hre.ethers;
@@ -33,6 +48,10 @@ async function bake() {
     for(const deposit of deposits) {
         const user = deposit.args.user;
         const balance = await oven.ethBalanceOf(user);
+        if (addresses.includes(user)) {
+            continue
+        }
+
         if (balance.lt(minAmount)) {
             console.log("Skipping", user,"(", balance.toString(), ")...")
             continue
@@ -56,15 +75,19 @@ async function bake() {
     console.log("Swapping", inputAmount.toString(), "for", outputAmount.toString())
 
     console.log("Start baking...")
-    const baketx = await oven.bake(
-       addresses,
-       outputAmount,
-       inputAmount,
-       {
-           gasLimit: 5000000
-       }
-    )
-    console.log("Baking in process @", baketx.hash)
+
+    const call = oven.interface.encodeFunctionData("bake", [addresses, outputAmount, inputAmount])
+
+    console.log("\n\nCalldata:\n\n", call)
+    // const baketx = await oven.bake(
+    //    addresses,
+    //    outputAmount,
+    //    inputAmount,
+    //    {
+    //        gasLimit: 5000000
+    //    }
+    // )
+    // console.log("Baking in process @", baketx.hash)
 }
 
 bake()
