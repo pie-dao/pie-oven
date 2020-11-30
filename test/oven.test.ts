@@ -9,6 +9,8 @@ import { TestPie } from "../typechain/TestPie";
 import TimeTraveler from "../utils/TimeTraveler";
 
 describe("Oven", function () {
+  this.timeout("30s");
+
   let pool: TestPie;
   let recipe: TestPieRecipe;
   let owner: Signer;
@@ -46,20 +48,27 @@ describe("Oven", function () {
 
     const Oven: OvenFactory = await ethers.getContractFactory("Oven") as OvenFactory;
     oven = await Oven.deploy(ownerAddress, ownerAddress, ownerAddress, pool.address, recipe.address) as Oven;
+
+    await oven.setCap(parseEther("1000"));
     
-    timeTraveler.snapshot();
+    await timeTraveler.snapshot();
   });
+
+  beforeEach(async() => {
+    await timeTraveler.revertSnapshot();
+  })
 
   describe("Oven happy flow", function () {
     it("Should deploy oven", async function () {
-      await oven.deployed();
+      // await oven.deployed();
 
-      expect(await oven.getCap()).to.be.eq(0);
+      expect(await oven.getCap()).to.be.eq(parseEther("1000"));
       await oven.setCap(parseEther("100"))
       expect(await oven.getCap()).to.be.eq(parseEther("100"));
     });
     it("Deposit", async function () {
       await expect(await oven.ethBalanceOf(ownerAddress)).to.be.eq(0);
+      await oven.setCap(parseEther("2"));
       await owner.sendTransaction({
         to: oven.address,
         value: parseEther("1.0")
@@ -69,11 +78,13 @@ describe("Oven", function () {
       await expect(await oven.ethBalanceOf(ownerAddress)).to.be.eq(parseEther("2"));
     });
     it("Withdraw ETH", async function () {
+      await oven.deposit({value: parseEther("2")});
       await oven.withdrawETH(parseEther("1"), ownerAddress)
       await expect(await oven.ethBalanceOf(ownerAddress)).to.be.eq(parseEther("1"));
 
     });
     it("Starts exchanging", async function () {
+      await oven.deposit({value: parseEther("1")});
       await recipe.testSetCalcToPieAmount(parseEther("1"))
 
       await expect(await oven.ethBalanceOf(ownerAddress)).to.be.eq(parseEther("1"));
@@ -85,6 +96,10 @@ describe("Oven", function () {
       await expect(await oven.outputBalanceOf(ownerAddress)).to.be.eq(parseEther("1"));
     });
     it("Withdraw Output", async function () {
+      await oven.deposit({ value: parseEther("1")});
+      await recipe.testSetCalcToPieAmount(parseEther("1"));
+      await oven.bake([ownerAddress], parseEther("1"), parseEther("10000"));
+
       await expect(await oven.outputBalanceOf(ownerAddress)).to.be.eq(parseEther("1"));
       await expect(await pool.balanceOf(ownerAddress)).to.be.eq(parseEther("0"))
       await oven.withdrawOutput(ownerAddress)
@@ -192,11 +207,10 @@ describe("Oven", function () {
       })
       it("Set pie and recipe, in one tx", async function () {
         const Oven = await ethers.getContractFactory("Oven");
-        oven = await Oven.deploy(ownerAddress, ownerAddress, ownerAddress, constants.AddressZero, constants.AddressZero) as Oven;
-        await oven.deployed();
-        await oven.setPieAndRecipe(pool.address, recipe.address)
-        await expect(await oven.pie()).to.be.eq(pool.address)
-        await expect(await oven.recipe()).to.be.eq(recipe.address)
+        const localOven = await Oven.deploy(ownerAddress, ownerAddress, ownerAddress, constants.AddressZero, constants.AddressZero) as Oven;
+        await localOven.setPieAndRecipe(pool.address, recipe.address)
+        await expect(await localOven.pie()).to.be.eq(pool.address)
+        await expect(await localOven.recipe()).to.be.eq(recipe.address)
       })
       it("verify controller functions", async function () {
         // TODO double check these
@@ -209,7 +223,6 @@ describe("Oven", function () {
   })
 
   describe("Test baking", function () {
-
     beforeEach(async function () {
       await oven.setCap(parseEther("1000"));
       await oven.connect(user1).deposit({ value: parseEther("100") });
@@ -430,25 +443,18 @@ describe("Oven", function () {
     it("Bake restriction", async function () {
       await expect (
         oven.connect(user1).bake([ownerAddress], parseEther("1"), parseEther("2"))
-      ).to.be.revertedWith("NOT_CONTROLLER")
+      ).to.be.revertedWith("AUTH_FAILED")
     })
     it("Cap restriction", async function () {
       await expect (
         oven.connect(user1).setCap(parseEther("1"))
-      ).to.be.revertedWith("NOT_CONTROLLER")
+      ).to.be.revertedWith("AUTH_FAILED")
     })
-    it("Set controller restriction", async function () {
+    it("Assign role restriction", async function () {
       const user1Addr = await user1Address;
       await expect (
-        oven.connect(user1).setController(user1Addr)
-      ).to.be.revertedWith("NOT_CONTROLLER")
-    })
-    it("Set controller", async function () {
-      const ownerAddr = ownerAddress;
-      const user1Addr = await user1Address;
-      await expect(await oven.controller()).to.be.eq(ownerAddr);
-      await oven.setController(user1Address)
-      await expect(await oven.controller()).to.be.eq(user1Addr);
+        oven.connect(user1).grantRole(await oven.CONTROLLER_ROLE(), await ownerAddress)
+      ).to.be.revertedWith("AccessControl: sender must be an admin to grant")
     })
   });
 });
