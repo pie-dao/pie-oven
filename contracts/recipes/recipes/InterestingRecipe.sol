@@ -124,12 +124,13 @@ contract InterestingRecipe is UniswapV2BalRecipe {
             } else if (registry.inRegistry(tokens[i])) {
                 totalEth += calcToPie(tokens[i], amounts[i]);
             } else {
-                (uint256 reserveA, uint256 reserveB) = UniLib.getReserves(
-                    address(uniswapFactory),
-                    address(WETH),
-                    tokens[i]
-                );
-                totalEth += UniLib.getAmountIn(amounts[i], reserveA, reserveB);
+                // (uint256 reserveA, uint256 reserveB) = UniLib.getReserves(
+                //     address(uniswapFactory),
+                //     address(WETH),
+                //     tokens[i]
+                // );
+                // totalEth += UniLib.getAmountIn(amounts[i], reserveA, reserveB);
+                totalEth += super.calcEthAmount(tokens[i], amounts[i]);
             }
         }
 

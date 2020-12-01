@@ -87,6 +87,13 @@ contract UniswapV2Recipe is Ownable, ChiGasSaver {
         uint256 _amount,
         address _pie
     ) internal virtual {
+        
+        if(_token == address(WETH)) {
+            IERC20(address(WETH)).safeApprove(_pie, _amount);
+            return;
+        }
+
+
         if (registry.inRegistry(_token)) {
             _toPie(_token, _amount);
         } else {
@@ -125,7 +132,10 @@ contract UniswapV2Recipe is Ownable, ChiGasSaver {
         uint256 totalEth = 0;
 
         for (uint256 i = 0; i < tokens.length; i++) {
-            if (registry.inRegistry(tokens[i])) {
+            if(tokens[i] == address(WETH)) {
+                totalEth += amounts[i];
+            }
+            else if (registry.inRegistry(tokens[i])) {
                 totalEth += calcToPie(tokens[i], amounts[i]);
             } else {
                 (uint256 reserveA, uint256 reserveB) = UniLib.getReserves(
@@ -144,7 +154,11 @@ contract UniswapV2Recipe is Ownable, ChiGasSaver {
         internal
         virtual
         returns (uint256)
-    {
+    {   
+        if(_token == address(WETH)) {
+            return _buyAmount;
+        }
+
         if (registry.inRegistry(_token)) {
             return calcToPie(_token, _buyAmount);
         } else {

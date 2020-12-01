@@ -1,6 +1,7 @@
 require('dotenv').config()
 
-import { task } from "hardhat/config";
+
+import { task, HardhatUserConfig } from "hardhat/config";
 import "@nomiclabs/hardhat-etherscan";
 import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-waffle";
@@ -113,7 +114,7 @@ task("bake", "Generate call data for bake function")
 // This object can have the following optional entries:
 // defaultNetwork, networks, solc, and paths.
 // Go to https://buidler.dev/config/ to learn more
-export default {
+const config: HardhatUserConfig = {
   // This is a sample solc configuration that specifies which version of solc to use
   solidity: {
     compilers: [
@@ -155,3 +156,5 @@ export default {
     apiKey: ETHERSCAN_API
   }
 };
+
+export default config;

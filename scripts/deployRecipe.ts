@@ -1,3 +1,5 @@
+import {ethers} from "hardhat";
+
 async function recipePublish() {
     const Recipe = await ethers.getContractFactory("InterestingRecipe");
     const recipe = await Recipe.deploy();

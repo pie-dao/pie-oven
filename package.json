@@ -7,7 +7,8 @@
     "test": "npx hardhat test",
     "compile": "npx hardhat compile",
     "clean": "rm -rf ./artifacts && rm -rf ./cache",
-    "remix": "remixd -s . --remix-ide https://remix.ethereum.org"
+    "remix": "remixd -s . --remix-ide https://remix.ethereum.org",
+    "fork": "npx hardhat node --fork https://mainnet.infura.io/v3/ffa6c1dc83e44e6c9971d4706311d5ab"
   },
   "author": "",
   "license": "MIT",
