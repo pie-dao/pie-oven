@@ -1,9 +1,11 @@
 require('dotenv').config()
 
+
 import { task, HardhatUserConfig } from "hardhat/config";
 import "@nomiclabs/hardhat-etherscan";
 import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-waffle";
+import "hardhat-typechain";
 
 const INFURA_API_KEY = process.env.INFURA_API_KEY || "";
 const MAINNET_PRIVATE_KEY = process.env.MAINNET_PRIVATE_KEY || "";
@@ -51,7 +53,7 @@ task("bake", "Generate call data for bake function")
     taskArgs.startBlock = parseInt(taskArgs.startBlock)
     taskArgs.slippage = parseInt(taskArgs.slippage)
 
-    let addresses = []
+    let addresses: string[] = []
     let inputAmount = ethers.BigNumber.from("0")
 
     const oven = await ethers.getContractAt("Oven", taskArgs.oven);
@@ -62,6 +64,7 @@ task("bake", "Generate call data for bake function")
     console.log("\n~Getting addresses~")
     const deposits = await oven.queryFilter(oven.filters.Deposit(), taskArgs.startBlock, "latest")
     for(const deposit of deposits) {
+        // @ts-ignore
         const user = deposit.args.user;
         const balance = await oven.ethBalanceOf(user);
         if (addresses.includes(user)) {
