@@ -3,9 +3,10 @@ pragma solidity ^0.7.1;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 import "../interfaces/PieRecipe.sol";
 
-contract Oven {
+contract Oven is AccessControl {
     using SafeMath for uint256;
 
     event Deposit(address user, uint256 amount);
@@ -13,19 +14,31 @@ contract Oven {
     event WithdrawOuput(address user, uint256 amount, address receiver);
     event Bake(address user, uint256 amount, uint256 price);
 
+    // uses the default admin role
+    bytes32 constant public CONTROLLER_ROLE = DEFAULT_ADMIN_ROLE;
+    bytes32 constant public CAP_SETTER_ROLE = keccak256(abi.encode("CAP_SETTER"));
+    bytes32 constant public BAKER_ROLE = keccak256(abi.encode("BAKER"));
+
+    // Agent controlled by Pie-Crust voting app
+    address payable constant public TOKEN_SAFE = 0xAF2fE0d4fe879066B2BaA68d9e56cC375DF22815;
+
     mapping(address => uint256) public ethBalanceOf;
     mapping(address => uint256) public outputBalanceOf;
-    address public controller;
+
     IERC20 public pie;
     PieRecipe public recipe;
     uint256 public cap;
 
     constructor(
         address _controller,
+        address _capSetter,
+        address _baker,
         address _pie,
         address _recipe
     ) public {
-        controller = _controller;
+        _setupRole(CONTROLLER_ROLE, _controller);
+        _setupRole(CAP_SETTER_ROLE, _capSetter);
+        _setupRole(BAKER_ROLE, _baker);
         pie = IERC20(_pie);
         recipe = PieRecipe(_recipe);
     }
@@ -36,8 +49,8 @@ contract Oven {
         _;
     }
 
-    modifier controllerOnly {
-        require(msg.sender == controller, "NOT_CONTROLLER");
+    modifier onlyRole(bytes32 _role) {
+        require(hasRole(_role, msg.sender), "AUTH_FAILED");
         _;
     }
 
@@ -48,7 +61,7 @@ contract Oven {
         address[] calldata _receivers,
         uint256 _outputAmount,
         uint256 _maxPrice
-    ) public ovenIsReady controllerOnly {
+    ) public ovenIsReady onlyRole(BAKER_ROLE) {
         uint256 realPrice = recipe.calcToPie(address(pie), _outputAmount);
         require(realPrice <= _maxPrice, "PRICE_ERROR");
 
@@ -125,22 +138,18 @@ contract Oven {
         emit WithdrawOuput(msg.sender, _amount, _receiver);
     }
 
-    function setCap(uint256 _cap) external controllerOnly {
+    function setCap(uint256 _cap) external onlyRole(CAP_SETTER_ROLE) {
         cap = _cap;
     }
 
-    function setController(address _controller) external controllerOnly {
-        controller = _controller;
-    }
-
-    function setPie(address _pie) public controllerOnly {
+    function setPie(address _pie) public onlyRole(CONTROLLER_ROLE) {
         // Only able to change pie from address(0) to an actual address
         // Otherwise old outputBalances can conflict with a new pie
         require(address(pie) == address(0), "PIE_ALREADY_SET");
         pie = IERC20(_pie);
     }
 
-    function setRecipe(address _recipe) public controllerOnly {
+    function setRecipe(address _recipe) public onlyRole(CONTROLLER_ROLE) {
         // Only able to change pie from address(0) to an actual address
         // Otherwise old outputBalances can conflict with a new pie
         require(address(recipe) == address(0), "RECIPE_ALREADY_SET");
@@ -156,14 +165,16 @@ contract Oven {
         return cap;
     }
 
-    function saveToken(address _token) external {
-        require(_token != address(pie), "INVALID_TOKEN");
-
+    function saveToken(address _token) external onlyRole(CONTROLLER_ROLE) {
         IERC20 token = IERC20(_token);
 
         token.transfer(
-            address(0x4efD8CEad66bb0fA64C8d53eBE65f31663199C6d),
+            TOKEN_SAFE,
             token.balanceOf(address(this))
         );
+    }
+
+    function saveETH() external onlyRole(CONTROLLER_ROLE) {
+        TOKEN_SAFE.transfer(address(this).balance);
     }
 }

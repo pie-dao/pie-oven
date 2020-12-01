@@ -1,6 +1,7 @@
 import { ethers } from "hardhat";
 import { expect } from "chai";
 import { parseEther } from "ethers/lib/utils";
+import { Oven } from "../typechain/Oven";
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
 describe("ovenFactory", function () {
@@ -47,17 +48,20 @@ describe("ovenFactory", function () {
 
     const tx = await ovenFactory.CreateEmptyOven()
     const receipt = await tx.wait()
-    const oven = receipt.events[0].args.Oven;
-    expect(receipt.events[0].args.Controller).to.be.eq(await owner.getAddress());
-    expect(receipt.events[0].args.Pie).to.be.eq(ZERO_ADDRESS);
-    expect(receipt.events[0].args.Recipe).to.be.eq(ZERO_ADDRESS)
+    
+    const event = receipt.events.find((item:any) => item.event == "OvenCreated");
+
+    const oven = event.args.Oven;
+    expect(event.args.Controller).to.be.eq(await owner.getAddress());
+    expect(event.args.Pie).to.be.eq(ZERO_ADDRESS);
+    expect(event.args.Recipe).to.be.eq(ZERO_ADDRESS)
 
     expect(await ovenFactory.isOven(oven)).to.be.eq(true);
     expect(await ovenFactory.ovens(0)).to.be.eq(oven);
 
-    const ovenContract = await ethers.getContractAt("Oven", oven);
+    const ovenContract = await ethers.getContractAt("Oven", oven) as Oven;
     expect(await ovenContract.getCap()).to.be.eq(ethers.BigNumber.from("2").pow(256).sub(1))
-    expect(await ovenContract.controller()).to.be.eq(await owner.getAddress())
+    expect(await ovenContract.hasRole(await ovenContract.CONTROLLER_ROLE(), await owner.getAddress())).to.be.true;
     expect(await ovenContract.pie()).to.be.eq(ZERO_ADDRESS)
     expect(await ovenContract.recipe()).to.be.eq(ZERO_ADDRESS)
   });
@@ -66,17 +70,18 @@ describe("ovenFactory", function () {
 
     const tx = await ovenFactory.CreateOven(pool.address, recipe.address)
     const receipt = await tx.wait()
-    const oven = receipt.events[0].args.Oven;
-    expect(receipt.events[0].args.Controller).to.be.eq(await owner.getAddress());
-    expect(receipt.events[0].args.Pie).to.be.eq(pool.address);
-    expect(receipt.events[0].args.Recipe).to.be.eq(recipe.address)
+    const event = receipt.events.find((item:any) => item.event == "OvenCreated");
+    const oven = event.args.Oven;
+    expect(event.args.Controller).to.be.eq(await owner.getAddress());
+    expect(event.args.Pie).to.be.eq(pool.address);
+    expect(event.args.Recipe).to.be.eq(recipe.address)
 
     expect(await ovenFactory.isOven(oven)).to.be.eq(true);
     expect(await ovenFactory.ovens(0)).to.be.eq(oven);
 
     const ovenContract = await ethers.getContractAt("Oven", oven);
     expect(await ovenContract.getCap()).to.be.eq(ethers.BigNumber.from("2").pow(256).sub(1))
-    expect(await ovenContract.controller()).to.be.eq(await owner.getAddress())
+    expect(await ovenContract.hasRole(await ovenContract.CONTROLLER_ROLE(), await owner.getAddress())).to.be.true;
     expect(await ovenContract.pie()).to.be.eq(pool.address)
     expect(await ovenContract.recipe()).to.be.eq(recipe.address)
   });
