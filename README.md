@@ -63,3 +63,6 @@ NOTE: change variables at top of script
 > npx hardhat run --network {goerli/mainnet} scripts/deployOvenUsingFactory.ts
 
 
+## Verify oven created by factory
+
+``npx hardhat verify --network mainnet [OVEN_ADDRESS] [FACTORY_ADDRESS] [FACTORY_ADDRESS] [DEFAULT_BAKER] [PIE] [RECIPE]```
