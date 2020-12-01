@@ -46,6 +46,7 @@ ETHERSCAN_API=
 
 npx hardhat run --network {goerli/mainnet} scripts/deployOvenFactory.ts
 
+`HARDHAT_NETWORK=mainnet ts-node ./scripts/deployOvenFactory.ts`
 **Deploy emty oven**
 
 NOTE: change variables at top of script
