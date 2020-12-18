@@ -145,14 +145,14 @@ contract Oven is AccessControl {
     function setPie(address _pie) public onlyRole(CONTROLLER_ROLE) {
         // Only able to change pie from address(0) to an actual address
         // Otherwise old outputBalances can conflict with a new pie
-        require(address(pie) == address(0), "PIE_ALREADY_SET");
+        // require(address(pie) == address(0), "PIE_ALREADY_SET");
         pie = IERC20(_pie);
     }
 
     function setRecipe(address _recipe) public onlyRole(CONTROLLER_ROLE) {
         // Only able to change pie from address(0) to an actual address
         // Otherwise old outputBalances can conflict with a new pie
-        require(address(recipe) == address(0), "RECIPE_ALREADY_SET");
+        // require(address(recipe) == address(0), "RECIPE_ALREADY_SET");
         recipe = PieRecipe(_recipe);
     }
 
