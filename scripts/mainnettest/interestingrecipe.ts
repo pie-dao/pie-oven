@@ -34,18 +34,24 @@ async function mainnet2() {
     console.log("Updating mapping")
     tx = await recipe.updateMapping(
       [
-        "0xba3D9687Cf50fE253cd2e1cFeEdE1d6787344Ed5",
+        "0xba3D9687Cf50fE253cd2e1cFeEdE1d6787344Ed5",// aAAVE
+        "0xA64BD6C70Cb9051F6A9ba1F163Fdc07E0DfB5F84", // aLINK
         //"0x70e36f6BF80a52b3B46b3aF8e106CC0ed743E8e4",
-       "0x35A18000230DA775CAc24873d00Ff85BccdeD550"
+       "0x35A18000230DA775CAc24873d00Ff85BccdeD550", // cUNI
+       "0x19d1666f543d42ef17f66e376944a22aea1a8e46", // crCOMP
       ],
-      [
-        "0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9",
+      [ 
+        "0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9", //AAVE
+        "0x514910771af9ca656af840dff83e8264ecf986ca", // LINK
        // "0xc00e94cb662c3520282e6f5717214004a7f26888",
-       "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984"
+       "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984", // UNI
+       "0xc00e94cb662c3520282e6f5717214004a7f26888" //  COMP
       ],
       [
         AAVE_LP_ADDRESS_PROVIDER,
+        AAVE_LP_ADDRESS_PROVIDER,
         //COMPTROLLER,
+       COMPTROLLER,
        COMPTROLLER
       ]
     )
@@ -73,10 +79,12 @@ async function mainnet2() {
 
     // Swap to BCP
 
-    console.log("Swapping to BCP"); 
-    const tx2 = await recipe.toPie("0xe4f726adc8e89c6a6017f01eada77865db22da14", ethers.utils.parseEther("1"), { value: ethers.utils.parseEther("1") });
+    console.log("Swapping to DXY"); 
+    const tx2 = await recipe.toPie("0x992e9f1D29E2FdB57A9E09A78e122fAFE3720CC5", ethers.utils.parseEther("1"), { value: ethers.utils.parseEther("1") });
+    // const tx2 = await recipe.toPie("0xe4f726adc8e89c6a6017f01eada77865db22da14", ethers.utils.parseEther("1"), { value: ethers.utils.parseEther("1") });
 
     console.log(tx);
+    console.log(tx2);
 
 }
 mainnet2()
