@@ -6,6 +6,5 @@ interface PieRecipe {
 
     function calcToPie(address _pie, uint256 _poolAmount)
         external
-        view
         returns (uint256);
 }
