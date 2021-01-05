@@ -37,7 +37,7 @@ contract InterestingRecipe is UniswapV2BalRecipe {
 
             super._swapToToken(underlying, underlyingAmount, _pie);
 
-            (address[] memory targets, bytes[] memory data) = lendingLogic.lend(underlying, _amount);
+            (address[] memory targets, bytes[] memory data) = lendingLogic.lend(underlying, underlyingAmount);
 
             // Do lend txs
             for(uint256 i = 0; i < targets.length; i ++) {
