@@ -10,8 +10,6 @@ import "../interfaces/IERC20.sol";
 import "../interfaces/ILendingRegistry.sol";
 import "../interfaces/ILendingLogic.sol";
 
-import "hardhat/console.sol";
-
 import "./SafeMath.sol";
 
 contract InterestingRecipe is UniswapV2BalRecipe {
