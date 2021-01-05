@@ -10,6 +10,7 @@ import "../interfaces/IERC20.sol";
 import "../interfaces/ILendingRegistry.sol";
 import "../interfaces/ILendingLogic.sol";
 
+import "hardhat/console.sol";
 
 import "./SafeMath.sol";
 
@@ -35,7 +36,7 @@ contract InterestingRecipe is UniswapV2BalRecipe {
             uint256 underlyingAmount = _amount.mul(exchangeRate).div(10**18).add(1);
 
             super._swapToToken(underlying, underlyingAmount, _pie);
-            
+
             (address[] memory targets, bytes[] memory data) = lendingLogic.lend(underlying, _amount);
 
             // Do lend txs
@@ -94,10 +95,11 @@ contract InterestingRecipe is UniswapV2BalRecipe {
                 totalEth += super.calcEthAmount(tokens[i], amounts[i]);
             }
         }
+        return totalEth;
     }
 
     function getLendingLogicFromWrapped(address _wrapped) internal view returns(ILendingLogic) {
-        ILendingLogic(
+        return ILendingLogic(
                 lendingRegistry.protocolToLogic(
                     lendingRegistry.wrappedToProtocol(
                         _wrapped
