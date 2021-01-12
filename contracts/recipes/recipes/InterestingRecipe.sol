@@ -1,3 +1,4 @@
+pragma experimental ABIEncoderV2;
 pragma solidity 0.6.4;
 
 import "./UniswapV2BalRecipe.sol";
@@ -6,44 +7,18 @@ import "../interfaces/IAaveLendingPool.sol";
 import "../interfaces/IAaveLendingPoolAddressProvider.sol";
 import "../interfaces/ICompoundCToken.sol";
 import "../interfaces/IERC20.sol";
+import "../interfaces/ILendingRegistry.sol";
+import "../interfaces/ILendingLogic.sol";
 
 import "./SafeMath.sol";
 
 contract InterestingRecipe is UniswapV2BalRecipe {
     using SafeMath for uint256;
-    // IDEA: current token supports are hard coded.
-    // Use calldata to create a more generalized protocol
 
-    // map A/C token to underlying asset
-    mapping(address => address) public wrappedToUnderlying;
-    // map underlying asset to A/C token.
+    ILendingRegistry public lendingRegistry;
 
-    // map to Aave LendingPoolAddressesProvider
-    // map to Compound comptroller (not being used in contract)
-    mapping(address => address) public wrappedToProtocol;
-
-    // map Aave lendingpool to aave.protocol
-    // map Compound comptroller to compound.protocol
-    mapping(address => bytes32) public protocolIdentifier;
-
-    function updateProtocolIdentifier(address _protocol, bytes32 _identifier)
-        external
-        onlyOwner
-    {
-        protocolIdentifier[_protocol] = _identifier;
-    }
-
-    function updateMapping(
-        address[] calldata _wrapped,
-        address[] calldata _underlying,
-        address[] calldata _protocol
-    ) external onlyOwner {
-        require(_wrapped.length == _underlying.length, "UNEQUAL_LENGTH");
-        require(_wrapped.length == _protocol.length, "UNEQUAL_LENGTH");
-        for (uint256 i = 0; i < _wrapped.length; i++) {
-            wrappedToUnderlying[_wrapped[i]] = _underlying[i];
-            wrappedToProtocol[_wrapped[i]] = _protocol[i];
-        }
+    constructor(address _lendingRegistry) public {
+        lendingRegistry = ILendingRegistry(_lendingRegistry);
     }
 
     function _swapToToken(
@@ -51,29 +26,22 @@ contract InterestingRecipe is UniswapV2BalRecipe {
         uint256 _amount,
         address _pie
     ) internal override {
-        address underlying = wrappedToUnderlying[_wrapped];
-        address protocol = wrappedToProtocol[_wrapped];
-        bytes32 identifier = protocolIdentifier[protocol];
+        address underlying = lendingRegistry.wrappedToUnderlying(_wrapped);
 
-        if (identifier == keccak256("aave.protocol")) {
-            // Aave is 1 to 1 exchange rate
-            IAaveLendingPoolAddressesProvider aaveProvider = IAaveLendingPoolAddressesProvider(protocol);
-
-            super._swapToToken(underlying, _amount, address(aaveProvider.getLendingPoolCore()));
-            IAaveLendingPool aave = IAaveLendingPool(
-                aaveProvider.getLendingPool()
-            );
-            aave.deposit(underlying, _amount, 0);
-
-            IERC20(_wrapped).safeApprove(_pie, _amount);
-        } else if (identifier == keccak256("compound.protocol")) {
-            ICompoundCToken cToken = ICompoundCToken(_wrapped);
-            uint256 exchangeRate = cToken.exchangeRateCurrent(); // wrapped to underlying
+        if (underlying != address(0)) {
+            ILendingLogic lendingLogic = getLendingLogicFromWrapped(_wrapped);
+            uint256 exchangeRate = lendingLogic.exchangeRate(_wrapped); // wrapped to underlying
             uint256 underlyingAmount = _amount.mul(exchangeRate).div(10**18).add(1);
 
-            super._swapToToken(underlying, underlyingAmount, address(cToken));
-            // https://compound.finance/docs/ctokens#mint
-            assert(cToken.mint(underlyingAmount) == 0);
+            super._swapToToken(underlying, underlyingAmount, _pie);
+
+            (address[] memory targets, bytes[] memory data) = lendingLogic.lend(underlying, underlyingAmount);
+
+            // Do lend txs
+            for(uint256 i = 0; i < targets.length; i ++) {
+                (bool success, ) = targets[i].call{ value: 0 }(data[i]);
+                require(success, "CALL_FAILED");
+            }
 
             IERC20(_wrapped).safeApprove(_pie, _amount);
         } else {
@@ -86,26 +54,20 @@ contract InterestingRecipe is UniswapV2BalRecipe {
         override
         returns (uint256)
     {
-        address underlying = wrappedToUnderlying[_wrapped];
-        address protocol = wrappedToProtocol[_wrapped];
-        bytes32 identifier = protocolIdentifier[protocol];
+        address underlying = lendingRegistry.wrappedToUnderlying(_wrapped);
 
-        if (identifier == keccak256("aave.protocol")) {
-            // Aave: 1 to 1
-            return super.calcEthAmount(underlying, _buyAmount);
-        } else if (identifier == keccak256("compound.protocol")) {
-            // convert _buyAmount of comp to underlying token
-            // convert get price of underlying token with uni/bpool
-
-            ICompoundCToken cToken = ICompoundCToken(_wrapped);
-            uint256 exchangeRate = cToken.exchangeRateCurrent(); // wrapped to underlying
+        if (underlying != address(0)) {
+            ILendingLogic lendingLogic = getLendingLogicFromWrapped(_wrapped);
+            uint256 exchangeRate = lendingLogic.exchangeRate(_wrapped); // wrapped to underlying
             uint256 underlyingAmount = _buyAmount.mul(exchangeRate).div(10**18).add(1);
             return super.calcEthAmount(underlying, underlyingAmount);
+
+        } else if (registry.inRegistry(_wrapped)) {
+            return calcToPie(_wrapped, _buyAmount);
         } else {
             return super.calcEthAmount(_wrapped, _buyAmount);
         }
     }
-
     function calcToPie(address _pie, uint256 _poolAmount)
         public
         override
@@ -117,9 +79,7 @@ contract InterestingRecipe is UniswapV2BalRecipe {
         uint256 totalEth = 0;
 
         for (uint256 i = 0; i < tokens.length; i++) {
-            if (wrappedToUnderlying[tokens[i]] != address(0)) {
-                totalEth += calcEthAmount(tokens[i], amounts[i]);
-            } else if (tokenToBPool[tokens[i]] != address(0)) {
+            if (lendingRegistry.wrappedToUnderlying(tokens[i]) != address(0)) {
                 totalEth += calcEthAmount(tokens[i], amounts[i]);
             } else if (registry.inRegistry(tokens[i])) {
                 totalEth += calcToPie(tokens[i], amounts[i]);
@@ -133,7 +93,16 @@ contract InterestingRecipe is UniswapV2BalRecipe {
                 totalEth += super.calcEthAmount(tokens[i], amounts[i]);
             }
         }
-
         return totalEth;
+    }
+
+    function getLendingLogicFromWrapped(address _wrapped) internal view returns(ILendingLogic) {
+        return ILendingLogic(
+                lendingRegistry.protocolToLogic(
+                    lendingRegistry.wrappedToProtocol(
+                        _wrapped
+                    )
+                )
+        );
     }
 }
