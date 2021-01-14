@@ -6,6 +6,7 @@ import "@nomiclabs/hardhat-etherscan";
 import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-waffle";
 import "hardhat-typechain";
+import { InterestingRecipeFactory } from "./typechain/InterestingRecipeFactory";
 
 const INFURA_API_KEY = process.env.INFURA_API_KEY || "";
 const MAINNET_PRIVATE_KEY = process.env.MAINNET_PRIVATE_KEY || "";
@@ -109,6 +110,16 @@ task("bake", "Generate call data for bake function")
     // console.log("Baking in process @", baketx.hash)
 });
 
+task("deploy-recipe")
+  .addParam("lendingRegistry")
+  .setAction(async(taskArgs, {ethers}) => {
+    const signers = await ethers.getSigners();
+    const recipeFactory = new InterestingRecipeFactory(signers[0]);
+    const recipe = await recipeFactory.deploy(taskArgs.lendingRegistry);
+
+    console.log(`Recipe deployed at: ${recipe.address}`);
+});
+
 
 // You have to export an object to set up your config
 // This object can have the following optional entries:
@@ -129,11 +140,11 @@ const config: HardhatUserConfig = {
   networks: {
     fork : {
       url: `http://127.0.0.1:8545/`,
-      gasPrice: 86000000000,
+      gasPrice: 0,
       accounts: [
         MAINNET_PRIVATE_KEY
       ].filter((item) => item !== ""),
-      timeout: 2483647
+      timeout: 248364700
     },
     mainnet: {
       url: `https://mainnet.infura.io/v3/${INFURA_API_KEY}`,

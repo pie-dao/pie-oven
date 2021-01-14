@@ -30,7 +30,7 @@ contract InterestingRecipe is UniswapV2BalRecipe {
 
         if (underlying != address(0)) {
             ILendingLogic lendingLogic = getLendingLogicFromWrapped(_wrapped);
-            uint256 exchangeRate = lendingLogic.exchangeRate(_wrapped); // wrapped to underlying
+            uint256 exchangeRate = lendingLogic.exchangeRate(_wrapped) + 1; // wrapped to underlying
             uint256 underlyingAmount = _amount.mul(exchangeRate).div(10**18).add(1);
 
             super._swapToToken(underlying, underlyingAmount, _pie);
@@ -58,7 +58,7 @@ contract InterestingRecipe is UniswapV2BalRecipe {
 
         if (underlying != address(0)) {
             ILendingLogic lendingLogic = getLendingLogicFromWrapped(_wrapped);
-            uint256 exchangeRate = lendingLogic.exchangeRate(_wrapped); // wrapped to underlying
+            uint256 exchangeRate = lendingLogic.exchangeRate(_wrapped) + 1; // wrapped to underlying
             uint256 underlyingAmount = _buyAmount.mul(exchangeRate).div(10**18).add(1);
             return super.calcEthAmount(underlying, underlyingAmount);
 
